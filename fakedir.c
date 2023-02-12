@@ -20,6 +20,7 @@
 bool isdebug = false;
 
 static char pathbuf[PATH_MAX];
+static char linkbuf[PATH_MAX];
 
 static char *pattern;
 static char *target;
@@ -38,19 +39,65 @@ static void __fakedir_init(void)
         exit(1);
     }
 
-    strcpy(pathbuf, target);
+    strlcpy(pathbuf, target, PATH_MAX);
     DEBUG("Initialized libfakedir with subtitution '%s' => '%s'", pattern, target);
 }
 
 char *rewrite_path(char *path)
 {
     if (pattern && !strncmp(path, pattern, strlen(pattern))) {
-        strcpy(pathbuf + strlen(target), path + strlen(pattern));
+        strlcpy(pathbuf + strlen(target), path + strlen(pattern), PATH_MAX);
         DEBUG("Matched path '%s' to '%s'", path, pathbuf);
         return pathbuf;
     } else {
         return path;
     }
+}
+
+char *resolve_symlink_parent(char *path)
+{
+    char workpath[PATH_MAX];
+    char *fname = NULL;
+
+    strlcpy(workpath, path, PATH_MAX);
+    for (int i = strlen(workpath); i > 0; i--) {
+        if (workpath[i] == '/') {
+            workpath[i] = 0;
+            fname = workpath + i + 1;
+            DEBUG("Preserved filename as '%s'", fname);
+            break;
+        }
+    }
+    DEBUG("Resolving symbolic link part '%s'", workpath);
+    if (!fname) {
+        strlcpy(linkbuf, path, PATH_MAX);
+        return path;
+    }
+
+    resolve_symlink(workpath);
+    strlcat(linkbuf, "/", PATH_MAX);
+    strlcat(linkbuf, fname, PATH_MAX);
+    DEBUG("Rebuilt path is '%s'", linkbuf);
+    return rewrite_path(linkbuf);
+}
+
+char *resolve_symlink(char *path)
+{
+    ssize_t linklen = readlink(rewrite_path(path), linkbuf, PATH_MAX);
+    //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ look familiar?
+    //                  well, nope. This, unlike my_readlink, is an atom.
+    //                  If you were to use my_readlink here instead, don't.
+    //                  The resulting recursion model would fry my brain.
+
+    if (linklen < 0) {
+        // Symlink resolution failed, recurse through path
+        char *result = resolve_symlink_parent(path);
+        DEBUG("Symbolic link '%s' recursively resolved to '%s'", path, result);
+        return result;
+    }
+    linkbuf[linklen] = 0;
+    DEBUG("Symbolic link '%s' resolved to '%s'", path, linkbuf);
+    return rewrite_path(linkbuf);
 }
 
 int my_execve(char *path, char *argv[], char *envp[])
@@ -145,18 +192,32 @@ int my_execve(char *path, char *argv[], char *envp[])
 
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 __attribute__((used, section("__DATA,__interpose")))
-static void *interpose[] =  { my_open   , open
-                            , my_openat , openat
-                            , my_execve , execve
-                            , my_lstat  , lstat
-                            , my_lstat  , lstat64
-                            , my_stat   , stat
-                            , my_stat   , stat64
-                            , my_fstatat, fstatat
-                            , my_access , access
-                            , my_faccessat, faccessat
-                            , my_opendir, opendir
-                            , my_chflags, chflags
+static void *interpose[] =  { my_open       , open
+                            , my_openat     , openat
+                            , my_execve     , execve
+                            , my_lstat      , lstat
+                            , my_lstat      , lstat64
+                            , my_stat       , stat
+                            , my_stat       , stat64
+                            , my_fstatat    , fstatat
+                            , my_access     , access
+                            , my_faccessat  , faccessat
+                            , my_opendir    , opendir
+                            , my_chflags    , chflags
+                            , my_mkfifo     , mkfifo
+                            , my_chmod      , chmod
+                            , my_fchmodat   , fchmodat
+                            , my_chown      , chown
+                            , my_lchown     , lchown
+                            , my_fchownat   , fchownat
+                            , my_link       , link
+                            , my_linkat     , linkat
+                            , my_unlink     , unlink
+                            , my_unlinkat   , unlinkat
+                            , my_symlink    , symlink
+                            , my_symlinkat  , symlinkat
+                            , my_readlink   , readlink
+                            , my_readlinkat , readlinkat
                             };
 
 // vim: ft=c.doxygen

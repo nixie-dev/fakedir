@@ -6,7 +6,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <dirent.h>
+#include <errno.h>
 
 /**
  * @file        common.h
@@ -42,5 +44,30 @@ extern bool isdebug;
  * @return  A string representing the rewritten path.
  */
 char *rewrite_path(char *path);
+
+/**
+ * This function resolves all symbolic links through the given path down
+ * to the last parent directory. This is useful for open() with O_SYMLINK,
+ * so that the last symbolic link is preserved.
+ *
+ * @brief   Resolve symbolic links in path down to parent directory.
+ * @param path  The path to perform resolution on
+ * @return  A string representing the resolved path.
+ * @see Mutually recursive with @ref resolve_symlink
+ */
+char *resolve_symlink_parent(char *path);
+
+/**
+ * This function checks if the file targeted by the path is a symbolic
+ * link, and if so, returns the rewritten results of @ref my_readlink on it.
+ * This is used by open() without O_SYMLINK, O_NOFOLLOW or O_NOFOLLOW_ANY,
+ * as well as l-variants of certain calls (like lchown, lstat)
+ *
+ * @brief   Resolve all symbolic links in path, taking fakedir into account.
+ * @param path  The path to perform resolution on
+ * @return  A string representing the resolved path
+ * @see Mutually recursive with @ref resolve_symlink_parent
+ */
+char *resolve_symlink(char *path);
 
 // vim: ft=c.doxygen

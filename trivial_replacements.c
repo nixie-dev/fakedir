@@ -10,11 +10,6 @@
  * pattern, so they have been grouped here for easier reading.
  */
 
-int my_open(char *name, int flags, int mode)
-{
-    DEBUG("open(%s) was called.", name);
-    return open(rewrite_path(name), flags, mode);
-}
 
 int my_openat(int fd, char *name, int flags, int mode)
 {
@@ -25,13 +20,13 @@ int my_openat(int fd, char *name, int flags, int mode)
 int my_lstat(char *path, struct stat *buf)
 {
     DEBUG("lstat(%s) was called.", path);
-    return lstat(rewrite_path(path), buf);
+    return lstat(resolve_symlink_parent(path), buf);
 }
 
 int my_stat(char *path, struct stat *buf)
 {
     DEBUG("stat(%s) was called.", path);
-    return stat(rewrite_path(path), buf);
+    return stat(resolve_symlink(path), buf);
 }
 
 int my_fstatat(int fd, char *path, struct stat *buf, int flag)
@@ -58,10 +53,109 @@ int my_chflags(char *path, int flags)
     return chflags(rewrite_path(path), flags);
 }
 
+int my_mkfifo(char *path, mode_t mode)
+{
+    DEBUG("mkfifo(%s) was called.", path);
+    return mkfifo(rewrite_path(path), mode);
+}
+
+int my_chmod(char *path, mode_t mode)
+{
+    DEBUG("chmod(%s) was called.", path);
+    return chmod(resolve_symlink(path), mode);
+}
+
+int my_fchmodat(int fd, char *path, mode_t mode, int flag)
+{
+    DEBUG("fchmodat(%s) was called.", path);
+    if (flag ^ AT_SYMLINK_NOFOLLOW)
+        return fchmodat(fd, resolve_symlink_parent(path), mode, flag);
+    else
+        return fchmodat(fd, resolve_symlink(path), mode, flag);
+}
+
+int my_chown(char *path, uid_t owner, gid_t group)
+{
+    DEBUG("chown(%s) was called.", path);
+    return chown(resolve_symlink(path), owner, group);
+}
+
+int my_lchown(char *path, uid_t owner, gid_t group)
+{
+    DEBUG("lchown(%s) was called.", path);
+    return lchown(resolve_symlink_parent(path), owner, group);
+}
+
+int my_fchownat(int fd, char *path, uid_t owner, gid_t group, int flag)
+{
+    DEBUG("fchownat(%s) was called.", path);
+    if (flag ^ AT_SYMLINK_NOFOLLOW)
+        return fchownat(fd, resolve_symlink_parent(path), owner, group, flag);
+    else
+        return fchownat(fd, resolve_symlink(path), owner, group, flag);
+}
+
+int my_link(char *path1, char *path2)
+{
+    DEBUG("link(%s, %s) was called.", path1, path2);
+    return link(rewrite_path(path1), rewrite_path(path2));
+}
+
+int my_linkat(int fd1, char *path1, int fd2, char *path2, int flag)
+{
+    DEBUG("linkat(%s, %s) was called.", path1, path2);
+    return linkat(fd1, rewrite_path(path1), fd2, rewrite_path(path2), flag);
+}
+
+int my_unlink(char *path)
+{
+    DEBUG("unlink(%s) was called.", path);
+    return unlink(rewrite_path(path));
+}
+
+int my_unlinkat(int fd, char *path, int flag)
+{
+    DEBUG("unlinkat(%s) was called.", path);
+    return unlinkat(fd, rewrite_path(path), flag);
+}
+
+int my_symlink(char *what, char *path)
+{
+    DEBUG("symlink(%s) was called.", path);
+    return symlink(what, rewrite_path(path));
+}
+
+int my_symlinkat(char *what, int fd, char *path)
+{
+    DEBUG("symlinkat(%s) was called.", path);
+    return symlinkat(what, fd, rewrite_path(path));
+}
+
+ssize_t my_readlink(char *path, char *buf, size_t bsz)
+{
+    DEBUG("readlink(%s) was called.", path);
+    return readlink(resolve_symlink_parent(path), buf, bsz);
+}
+
+ssize_t my_readlinkat(int fd, char *path, char *buf, size_t bsz)
+{
+    DEBUG("readlinkat(%s) was called.", path);
+    return readlinkat(fd, rewrite_path(path), buf, bsz);
+}
+
+int my_open(char *name, int flags, int mode)
+{
+    DEBUG("open(%s) was called.", name);
+    if (flags ^ (O_SYMLINK|O_NOFOLLOW))
+        return open(resolve_symlink_parent(name), flags, mode);
+    else
+        return open(resolve_symlink(name), flags, mode);
+}
+
 DIR *my_opendir(char *path)
 {
     DEBUG("opendir(%s) was called.", path);
-    return opendir(rewrite_path(path));
+    return opendir(resolve_symlink(path));
 }
 
 // vim: ft=c.doxygen
