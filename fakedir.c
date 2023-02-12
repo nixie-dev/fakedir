@@ -54,7 +54,7 @@ char *rewrite_path(char *path)
     }
 }
 
-char *resolve_symlink_parent(char *path)
+char *resolve_symlink_parent(char *path, int fd)
 {
     char workpath[PATH_MAX];
     char *fname = NULL;
@@ -74,7 +74,10 @@ char *resolve_symlink_parent(char *path)
         return path;
     }
 
-    resolve_symlink(workpath);
+    if (fd >= 0)
+        resolve_symlink_at(fd, workpath);
+    else
+        resolve_symlink(workpath);
     strlcat(linkbuf, "/", PATH_MAX);
     strlcat(linkbuf, fname, PATH_MAX);
     DEBUG("Rebuilt path is '%s'", linkbuf);
@@ -91,12 +94,27 @@ char *resolve_symlink(char *path)
 
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path
-        char *result = resolve_symlink_parent(path);
+        char *result = resolve_symlink_parent(path, -1);
         DEBUG("Symbolic link '%s' recursively resolved to '%s'", path, result);
         return result;
     }
     linkbuf[linklen] = 0;
     DEBUG("Symbolic link '%s' resolved to '%s'", path, linkbuf);
+    return rewrite_path(linkbuf);
+}
+
+//TODO: resolve_symlink_parent() needs to be aware of our fd, add optional arg?
+char *resolve_symlink_at(int fd, char *path)
+{
+    ssize_t linklen = readlinkat(fd, rewrite_path(path), linkbuf, PATH_MAX);
+
+    if (linklen < 0) {
+        // Symlink resolution failed, recurse through path
+        char *result = resolve_symlink_parent(path, fd);
+        DEBUG("Symbolic link '%s' recursively fd-resolved to '%s'", path, result);
+    }
+    linkbuf[linklen] = 0;
+    DEBUG("Symbolic link '%s' fd-resolved to '%s'", path, linkbuf);
     return rewrite_path(linkbuf);
 }
 
@@ -184,10 +202,10 @@ int my_execve(char *path, char *argv[], char *envp[])
         }
 
         // Fun fact: shebangs are recursive! Scripts can be interpreters too!
-        return my_execve(rewrite_path(my_path), new_argv, envp);
+        return my_execve(resolve_symlink(my_path), new_argv, envp);
     }
 
-    return execve(rewrite_path(path), argv, envp);
+    return execve(resolve_symlink(path), argv, envp);
 }
 
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"

@@ -52,14 +52,16 @@ char *rewrite_path(char *path);
  *
  * @brief   Resolve symbolic links in path down to parent directory.
  * @param path  The path to perform resolution on
+ * @param fd    The file descriptor to pass back to @ref resolve_symlink_at,
+ *              or -1 to use @ref resolve_symlink.
  * @return  A string representing the resolved path.
- * @see Mutually recursive with @ref resolve_symlink
+ * @see Mutually recursive with @ref resolve_symlink and @ref resolve_symlink_at
  */
-char *resolve_symlink_parent(char *path);
+char *resolve_symlink_parent(char *path, int fd);
 
 /**
- * This function checks if the file targeted by the path is a symbolic
- * link, and if so, returns the rewritten results of @ref my_readlink on it.
+ * This function performs a recursive resolution of all symbolic links
+ * through the given path, including the final file if it is a symbolic link.
  * This is used by open() without O_SYMLINK, O_NOFOLLOW or O_NOFOLLOW_ANY,
  * as well as l-variants of certain calls (like lchown, lstat)
  *
@@ -69,5 +71,18 @@ char *resolve_symlink_parent(char *path);
  * @see Mutually recursive with @ref resolve_symlink_parent
  */
 char *resolve_symlink(char *path);
+
+/**
+ * This function is an alternative entry point into the recursive symbolic
+ * link resolution system, for use with -at-variants of certain syscalls.
+ *
+ * @brief   Like resolve_symlink, but with file descriptor as current dir.
+ * @param fd    The file descriptor representing the current directory.
+ * @param path  The path to perform resolution on.
+ * @return  A string representing the resolved path
+ * @see Functionally equivalent to @ref resolve_symlink
+ * @see Mutually recursive with @ref resolve_symlink_parent
+ */
+char *resolve_symlink_at(int fd, char *path);
 
 // vim: ft=c.doxygen

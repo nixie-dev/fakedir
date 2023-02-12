@@ -10,6 +10,20 @@
  * pattern, so they have been grouped here for easier reading.
  */
 
+#define RS_PARENT(p) resolve_symlink_parent(p, -1)
+
+static char *rs_at_flagged(int fd, char *path, int flags)
+{
+    if (flags & AT_FDCWD && flags & AT_SYMLINK_NOFOLLOW)
+        return resolve_symlink_parent(path, -1);
+    else if (flags & AT_FDCWD)
+        return resolve_symlink(path);
+    else if (flags & AT_SYMLINK_NOFOLLOW)
+        return resolve_symlink_parent(path, fd);
+    else
+        return resolve_symlink_at(fd, path);
+}
+
 
 int my_openat(int fd, char *name, int flags, int mode)
 {
@@ -20,7 +34,7 @@ int my_openat(int fd, char *name, int flags, int mode)
 int my_lstat(char *path, struct stat *buf)
 {
     DEBUG("lstat(%s) was called.", path);
-    return lstat(resolve_symlink_parent(path), buf);
+    return lstat(RS_PARENT(path), buf);
 }
 
 int my_stat(char *path, struct stat *buf)
@@ -68,10 +82,7 @@ int my_chmod(char *path, mode_t mode)
 int my_fchmodat(int fd, char *path, mode_t mode, int flag)
 {
     DEBUG("fchmodat(%s) was called.", path);
-    if (flag ^ AT_SYMLINK_NOFOLLOW)
-        return fchmodat(fd, resolve_symlink_parent(path), mode, flag);
-    else
-        return fchmodat(fd, resolve_symlink(path), mode, flag);
+    return fchmodat(fd, rs_at_flagged(fd, path, flag), mode, flag);
 }
 
 int my_chown(char *path, uid_t owner, gid_t group)
@@ -83,16 +94,13 @@ int my_chown(char *path, uid_t owner, gid_t group)
 int my_lchown(char *path, uid_t owner, gid_t group)
 {
     DEBUG("lchown(%s) was called.", path);
-    return lchown(resolve_symlink_parent(path), owner, group);
+    return lchown(RS_PARENT(path), owner, group);
 }
 
 int my_fchownat(int fd, char *path, uid_t owner, gid_t group, int flag)
 {
     DEBUG("fchownat(%s) was called.", path);
-    if (flag ^ AT_SYMLINK_NOFOLLOW)
-        return fchownat(fd, resolve_symlink_parent(path), owner, group, flag);
-    else
-        return fchownat(fd, resolve_symlink(path), owner, group, flag);
+    return fchownat(fd, rs_at_flagged(fd, path, flag), owner, group, flag);
 }
 
 int my_link(char *path1, char *path2)
@@ -134,7 +142,7 @@ int my_symlinkat(char *what, int fd, char *path)
 ssize_t my_readlink(char *path, char *buf, size_t bsz)
 {
     DEBUG("readlink(%s) was called.", path);
-    return readlink(resolve_symlink_parent(path), buf, bsz);
+    return readlink(RS_PARENT(path), buf, bsz);
 }
 
 ssize_t my_readlinkat(int fd, char *path, char *buf, size_t bsz)
@@ -147,7 +155,7 @@ int my_open(char *name, int flags, int mode)
 {
     DEBUG("open(%s) was called.", name);
     if (flags ^ (O_SYMLINK|O_NOFOLLOW))
-        return open(resolve_symlink_parent(name), flags, mode);
+        return open(RS_PARENT(name), flags, mode);
     else
         return open(resolve_symlink(name), flags, mode);
 }
