@@ -1,5 +1,15 @@
 #include "common.h"
 
+/**
+ * @file        trivial_replacements.c
+ * @author      Karim Vergnes <me@thesola.io>
+ * @copyright   GPLv2
+ * @brief       Set of trivial rewrites for system calls using paths.
+ *
+ * The following replacements are numerous and pretty much follow the same
+ * pattern, so they have been grouped here for easier reading.
+ */
+
 int my_open(char *name, int flags, int mode)
 {
     DEBUG("open(%s) was called.", name);
@@ -53,3 +63,5 @@ DIR *my_opendir(char *path)
     DEBUG("opendir(%s) was called.", path);
     return opendir(rewrite_path(path));
 }
+
+// vim: ft=c.doxygen
