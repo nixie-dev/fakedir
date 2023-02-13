@@ -28,7 +28,7 @@ static char *rs_at_flagged(int fd, char *path, int flags)
 int my_openat(int fd, char *name, int flags, int mode)
 {
     DEBUG("openat(%s) was called.", name);
-    return openat(fd, rewrite_path(name), flags, mode);
+    return openat(fd, rs_at_flagged(fd, name, flags), flags, mode);
 }
 
 int my_lstat(char *path, struct stat *buf)
@@ -46,31 +46,31 @@ int my_stat(char *path, struct stat *buf)
 int my_fstatat(int fd, char *path, struct stat *buf, int flag)
 {
     DEBUG("fstatat(%s) was called.", path);
-    return fstatat(fd, rewrite_path(path), buf, flag);
+    return fstatat(fd, rs_at_flagged(fd, path, flag), buf, flag);
 }
 
 int my_access(char *path, int mode)
 {
     DEBUG("access(%s) was called.", path);
-    return access(rewrite_path(path), mode);
+    return access(resolve_symlink(path), mode);
 }
 
 int my_faccessat(int fd, char *path, int mode, int flag)
 {
     DEBUG("faccessat(%s) was called.", path);
-    return faccessat(fd, rewrite_path(path), mode, flag);
+    return faccessat(fd, rs_at_flagged(fd, path, flag), mode, flag);
 }
 
 int my_chflags(char *path, int flags)
 {
     DEBUG("chflags(%s) was called.", path);
-    return chflags(rewrite_path(path), flags);
+    return chflags(resolve_symlink(path), flags);
 }
 
 int my_mkfifo(char *path, mode_t mode)
 {
     DEBUG("mkfifo(%s) was called.", path);
-    return mkfifo(rewrite_path(path), mode);
+    return mkfifo(RS_PARENT(path), mode);
 }
 
 int my_chmod(char *path, mode_t mode)
@@ -106,37 +106,37 @@ int my_fchownat(int fd, char *path, uid_t owner, gid_t group, int flag)
 int my_link(char *path1, char *path2)
 {
     DEBUG("link(%s, %s) was called.", path1, path2);
-    return link(rewrite_path(path1), rewrite_path(path2));
+    return link(RS_PARENT(path1), RS_PARENT(path2));
 }
 
 int my_linkat(int fd1, char *path1, int fd2, char *path2, int flag)
 {
     DEBUG("linkat(%s, %s) was called.", path1, path2);
-    return linkat(fd1, rewrite_path(path1), fd2, rewrite_path(path2), flag);
+    return linkat(fd1, rs_at_flagged(fd1, path1, flag), fd2, rs_at_flagged(fd2, path2, flag), flag);
 }
 
 int my_unlink(char *path)
 {
     DEBUG("unlink(%s) was called.", path);
-    return unlink(rewrite_path(path));
+    return unlink(RS_PARENT(path));
 }
 
 int my_unlinkat(int fd, char *path, int flag)
 {
     DEBUG("unlinkat(%s) was called.", path);
-    return unlinkat(fd, rewrite_path(path), flag);
+    return unlinkat(fd, rs_at_flagged(fd, path, flag), flag);
 }
 
 int my_symlink(char *what, char *path)
 {
     DEBUG("symlink(%s) was called.", path);
-    return symlink(what, rewrite_path(path));
+    return symlink(what, RS_PARENT(path));
 }
 
 int my_symlinkat(char *what, int fd, char *path)
 {
     DEBUG("symlinkat(%s) was called.", path);
-    return symlinkat(what, fd, rewrite_path(path));
+    return symlinkat(what, fd, rs_at_flagged(fd, path, 0));
 }
 
 ssize_t my_readlink(char *path, char *buf, size_t bsz)
@@ -148,7 +148,7 @@ ssize_t my_readlink(char *path, char *buf, size_t bsz)
 ssize_t my_readlinkat(int fd, char *path, char *buf, size_t bsz)
 {
     DEBUG("readlinkat(%s) was called.", path);
-    return readlinkat(fd, rewrite_path(path), buf, bsz);
+    return readlinkat(fd, rs_at_flagged(fd, path, 0), buf, bsz);
 }
 
 int my_open(char *name, int flags, int mode)

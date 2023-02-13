@@ -86,6 +86,10 @@ char *resolve_symlink_parent(char *path, int fd)
 
 char *resolve_symlink(char *path)
 {
+    char wpath[PATH_MAX];
+    strlcpy(wpath, path, PATH_MAX);
+    // There is a chance we're being fed our own work buffer, save it.
+
     ssize_t linklen = readlink(rewrite_path(path), linkbuf, PATH_MAX);
     //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ look familiar?
     //                  well, nope. This, unlike my_readlink, is an atom.
@@ -101,22 +105,24 @@ char *resolve_symlink(char *path)
     linkbuf[linklen] = 0;
     if (linkbuf[0] != '/') {
         // Symlink is relative, copy it to end of buffer then rewrite parent
-        int off = strlen(path);
+        int off = strlen(wpath);
         for (; off > 0; off--)
-            if (path[off] == '/')
+            if (wpath[off] == '/')
                 break;
         for (int i = off + linklen; i >= 0; i--)
             linkbuf[i + off + 1] = linkbuf[i];
         for (int i = off; i >= 0; i--)
-            linkbuf[i] = path[i];
+            linkbuf[i] = wpath[i];
     }
-    DEBUG("Symbolic link '%s' resolved to '%s'", path, linkbuf);
+    DEBUG("Symbolic link '%s' resolved to '%s'", wpath, linkbuf);
     return resolve_symlink(rewrite_path(linkbuf));
 }
 
-//TODO: resolve_symlink_parent() needs to be aware of our fd, add optional arg?
 char *resolve_symlink_at(int fd, char *path)
 {
+    char wpath[PATH_MAX];
+    strlcpy(wpath, path, PATH_MAX);
+
     ssize_t linklen = readlinkat(fd, rewrite_path(path), linkbuf, PATH_MAX);
 
     if (linklen < 0) {
@@ -127,16 +133,16 @@ char *resolve_symlink_at(int fd, char *path)
     linkbuf[linklen] = 0;
     if (linkbuf[0] != '/') {
         // Symlink is relative, copy it to end of buffer then rewrite parent
-        int off = strlen(path);
+        int off = strlen(wpath);
         for (; off > 0; off--)
-            if (path[off] == '/')
+            if (wpath[off] == '/')
                 break;
         for (int i = off + linklen; i >= 0; i--)
             linkbuf[i + off + 1] = linkbuf[i];
         for (int i = off; i >= 0; i--)
-            linkbuf[i] = path[i];
+            linkbuf[i] = wpath[i];
     }
-    DEBUG("Symbolic link '%s' fd-resolved to '%s'", path, linkbuf);
+    DEBUG("Symbolic link '%s' fd-resolved to '%s'", wpath, linkbuf);
     return resolve_symlink_at(fd, rewrite_path(linkbuf));
 }
 
