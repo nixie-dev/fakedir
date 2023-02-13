@@ -146,9 +146,63 @@ char *resolve_symlink_at(int fd, char *path)
     return resolve_symlink_at(fd, rewrite_path(linkbuf));
 }
 
+static int execve_patch_envp(char *path, char *argv[], char *envp[])
+{
+    DEBUG("Preparing envp for fakedir library loading");
+    int envc = 0;
+    int dsr_idx = -1;   // DYLD_SHARED_REGION
+    int dscd_idx = -1;  // DYLD_SHARED_CACHE_DIR
+    int dil_idx = -1;   // DYLD_INSERT_LIBRARIES
+
+#   define dsr_match "DYLD_SHARED_REGION="
+#   define dscd_match "DYLD_SHARED_CACHE_DIR="
+#   define dil_match "DYLD_INSERT_LIBRARIES="
+
+    char *dsr_full = dsr_match "private";
+    char dscd_full[strlen(dscd_match) + PATH_MAX];
+    char dil_full[strlen(dil_match) + PATH_MAX];
+    strncpy(dscd_full, dscd_match, strlen(dscd_match));
+    strncpy(dil_full, dil_match, strlen(dil_match));
+
+    strlcat(dscd_full, getenv("HOME"), PATH_MAX);
+    strlcat(dscd_full, "/Library/fakedir-dyld", PATH_MAX);
+
+    for (; envp[envc]; envc++)
+        ;
+    char *new_envp[envc + 4];
+    for (int i = 0; i < envc; i++) {
+        if (! strncmp(envp[i], dil_match, strlen(dil_match)))
+            dil_idx = i;
+        else if (! strncmp(envp[i], dsr_match, strlen(dsr_match)))
+            dsr_idx = i;
+        else if (! strncmp(envp[i], dscd_match, strlen(dscd_match)))
+            dscd_idx = i;
+        new_envp[i] = envp[i];
+    }
+
+    //TODO: build actual shared cache, probably by capturing all fakedir
+    // children and rewriting *.map accordingly
+    //TODO: Locate and carry ourselves back into DYLD_INSERT_LIBRARIES
+    //TODO: Test injection without DYLD_SHARED_REGION=private to see if
+    // copying the system cache is needed
+
+    new_envp[dscd_idx == -1 ? envc++ : dscd_idx] = dscd_full;
+    new_envp[dil_idx == -1 ? envc++ : dil_idx] = dil_full;
+    new_envp[dsr_idx == -1 ? envc++ : dsr_idx] = dsr_full;
+
+    return execve(path, argv, new_envp);
+}
+
 int my_execve(char *path, char *argv[], char *envp[])
 {
     //TODO: trick the linker into loading libs in our fakedir
+    // We might actually be able to do that by building a shared cache where
+    // libraries are bound without "existing", just like macOS itself does.
+    // So, for instance, if my program wants /nix/store/xxx-lol/lib/lol.dylib
+    // then we inject the real library under the fake path in our binary cache
+    // before executing.
+    // Thus we need to add DYLD_SHARED_REGION=private, copy system shared cache
+    // and use DYLD_SHARED_CACHE_DIR=$HOME/Library/fakedir-dyld or something.
 
     DEBUG("execve(%s) was called.", path);
     int tgt = my_open(path, O_RDONLY, 0000);
@@ -157,7 +211,7 @@ int my_execve(char *path, char *argv[], char *envp[])
     // Since we're overriding shebang behavior, we might allow non-executables
     // to be run with a shebang. To prevent that, we skip the shebang parser
     // in files without exec rights and let the real execve() return the error.
-    int canexec = ! my_access(rewrite_path(path), X_OK);
+    int canexec = ! my_access(path, X_OK);
     read(tgt, shebang, PATH_MAX);
     close(tgt);
 
@@ -233,7 +287,7 @@ int my_execve(char *path, char *argv[], char *envp[])
         return my_execve(resolve_symlink(my_path), new_argv, envp);
     }
 
-    return execve(resolve_symlink(path), argv, envp);
+    return execve_patch_envp(resolve_symlink(path), argv, envp);
 }
 
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"

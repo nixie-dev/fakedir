@@ -34,6 +34,8 @@ The faked directory will not appear in its parent's directory listing, as we do 
 
 Cyclic symbolic links are not detected and will result in a stack overflow, due to limitations with the in-library resolver.
 
+The fakedir library itself may not be located in the fake directory.
+
 <!--
 Calling fakedir's `execve()` may result in a very large `DYLD_INSERT_LIBRARIES` environment variable, as we currently cannot hook into `dyld`'s own understanding of the filesystem.
 -->
