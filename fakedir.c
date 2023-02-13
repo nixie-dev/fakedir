@@ -99,8 +99,19 @@ char *resolve_symlink(char *path)
         return result;
     }
     linkbuf[linklen] = 0;
+    if (linkbuf[0] != '/') {
+        // Symlink is relative, copy it to end of buffer then rewrite parent
+        int off = strlen(path);
+        for (; off > 0; off--)
+            if (path[off] == '/')
+                break;
+        for (int i = off + linklen; i >= 0; i--)
+            linkbuf[i + off + 1] = linkbuf[i];
+        for (int i = off; i >= 0; i--)
+            linkbuf[i] = path[i];
+    }
     DEBUG("Symbolic link '%s' resolved to '%s'", path, linkbuf);
-    return rewrite_path(linkbuf);
+    return resolve_symlink(rewrite_path(linkbuf));
 }
 
 //TODO: resolve_symlink_parent() needs to be aware of our fd, add optional arg?
@@ -114,8 +125,19 @@ char *resolve_symlink_at(int fd, char *path)
         DEBUG("Symbolic link '%s' recursively fd-resolved to '%s'", path, result);
     }
     linkbuf[linklen] = 0;
+    if (linkbuf[0] != '/') {
+        // Symlink is relative, copy it to end of buffer then rewrite parent
+        int off = strlen(path);
+        for (; off > 0; off--)
+            if (path[off] == '/')
+                break;
+        for (int i = off + linklen; i >= 0; i--)
+            linkbuf[i + off + 1] = linkbuf[i];
+        for (int i = off; i >= 0; i--)
+            linkbuf[i] = path[i];
+    }
     DEBUG("Symbolic link '%s' fd-resolved to '%s'", path, linkbuf);
-    return rewrite_path(linkbuf);
+    return resolve_symlink_at(fd, rewrite_path(linkbuf));
 }
 
 int my_execve(char *path, char *argv[], char *envp[])
