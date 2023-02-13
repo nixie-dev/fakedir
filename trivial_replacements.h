@@ -34,6 +34,22 @@ int my_symlink(char *what, char *path);
 int my_symlinkat(char *what, int fd, char *path);
 ssize_t my_readlink(char *path, char *buf, size_t bsz);
 ssize_t my_readlinkat(int fd, char *path, char *buf, size_t bsz);
+int my_clonefile(char *path1, char *path2, int flags);
+int my_clonefileat(int fd1, char *path1, int fd2, char *path2, int flags);
+int my_fclonefileat(int src, int fd, char *path, int flags);
+int my_exchangedata(char *path1, char *path2, int options);
+int my_truncate(char *path, off_t length);
+int my_utimes(char *path, struct timeval times[2]);
+int my_rename(char *from, char *to);
+int my_renameat(int fd1, char *from, int fd2, char *to);
+int my_renamex_np(char *from, char *to, int flags);
+int my_renameatx_np(int fd1, char *from, int fd2, char *to, int flags);
+int my_undelete(char *path);
+int my_mkdir(char *path, mode_t mode);
+int my_mkdirat(int fd, char *path, mode_t mode);
+int my_rmdir(char *path);
+int my_chdir(char *path);
+char *my_getcwd(char *buf, size_t size);
 
 DIR *my_opendir(char *path);
 

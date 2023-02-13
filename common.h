@@ -9,6 +9,9 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <errno.h>
+#include <sys/clonefile.h>
+#include <sys/attr.h>
+#include <sys/time.h>
 
 /**
  * @file        common.h
@@ -44,6 +47,17 @@ extern bool isdebug;
  * @return  A string representing the rewritten path.
  */
 char *rewrite_path(char *path);
+
+/**
+ * This function performs the reverse operation to @ref rewrite_path, that is
+ * it replaces FAKEDIR_TARGET with FAKEDIR_PATTERN at the start of the given
+ * path.
+ *
+ * @brief   Performs inverse of rewrite_path
+ * @param path  The path to be rewritten
+ * @return  A string represneting the rewritten path.
+ */
+char *rewrite_path_rev(char *path);
 
 /**
  * This function resolves all symbolic links through the given path down

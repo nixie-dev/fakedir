@@ -154,10 +154,117 @@ ssize_t my_readlinkat(int fd, char *path, char *buf, size_t bsz)
 int my_open(char *name, int flags, int mode)
 {
     DEBUG("open(%s) was called.", name);
-    if (flags ^ (O_SYMLINK|O_NOFOLLOW))
+    if (flags & (O_SYMLINK|O_NOFOLLOW))
         return open(RS_PARENT(name), flags, mode);
     else
         return open(resolve_symlink(name), flags, mode);
+}
+
+int my_clonefile(char *path1, char *path2, int flags)
+{
+    DEBUG("clonefile(%s,%s) was called.", path1, path2);
+    if (flags & CLONE_NOFOLLOW)
+        return clonefile(RS_PARENT(path1), RS_PARENT(path2), flags);
+    else
+        return clonefile(resolve_symlink(path1), RS_PARENT(path2), flags);
+}
+
+int my_clonefileat(int fd1, char *path1, int fd2, char *path2, int flags)
+{
+    DEBUG("clonefileat(%s,%s) was called.", path1, path2);
+    if (flags & CLONE_NOFOLLOW)
+        return clonefileat(fd1, resolve_symlink_parent(path1, fd1), fd2, resolve_symlink_parent(path2, fd2), flags);
+    else
+        return clonefileat(fd1, resolve_symlink_at(fd1, path1), fd2, resolve_symlink_parent(path2, fd2), flags);
+}
+
+int my_fclonefileat(int src, int fd, char *path, int flags)
+{
+    DEBUG("fclonefileat(%s) was called.", path);
+    return fclonefileat(src, fd, resolve_symlink_parent(path, fd), flags);
+}
+
+int my_exchangedata(char *path1, char *path2, int options)
+{
+    DEBUG("exchangedata(%s,%s) was called.", path1, path2);
+    if (options & FSOPT_NOFOLLOW)
+        return exchangedata(RS_PARENT(path1), RS_PARENT(path2), options);
+    else
+        return exchangedata(resolve_symlink(path1), resolve_symlink(path2), options);
+}
+
+int my_truncate(char *path, off_t length)
+{
+    DEBUG("truncate(%s) was called.", path);
+    return truncate(resolve_symlink(path), length);
+}
+
+int my_utimes(char *path, struct timeval times[2])
+{
+    DEBUG("utimes(%s) was called.", path);
+    return utimes(resolve_symlink(path), times);
+}
+
+int my_rename(char *from, char *to)
+{
+    DEBUG("rename(%s,%s) was called.", from, to);
+    return rename(RS_PARENT(from), RS_PARENT(to));
+}
+
+int my_renameat(int fd1, char *from, int fd2, char *to)
+{
+    DEBUG("renameat(%s,%s) was called.", from, to);
+    return renameat(fd1, resolve_symlink_parent(from, fd1), fd2, resolve_symlink_parent(to, fd2));
+}
+
+int my_renamex_np(char *from, char *to, int flags)
+{
+    DEBUG("renamex_np(%s,%s) was called.", from, to);
+    return renamex_np(RS_PARENT(from), RS_PARENT(to), flags);
+}
+
+int my_renameatx_np(int fd1, char *from, int fd2, char *to, int flags)
+{
+    DEBUG("renameatx_np(%s,%s) was called.", from, to);
+    return renameatx_np(fd1, resolve_symlink_parent(from, fd1), fd2, resolve_symlink_parent(to, fd2), flags);
+}
+
+int my_undelete(char *path)
+{
+    DEBUG("undelete(%s) was called.", path);
+    return undelete(resolve_symlink(path));
+}
+
+int my_mkdir(char *path, mode_t mode)
+{
+    DEBUG("mkdir(%s) was called.", path);
+    return mkdir(RS_PARENT(path), mode);
+}
+
+int my_mkdirat(int fd, char *path, mode_t mode)
+{
+    DEBUG("mkdirat(%s) was called.", path);
+    return mkdirat(fd, resolve_symlink_parent(path, fd), mode);
+}
+
+int my_rmdir(char *path)
+{
+    DEBUG("rmdir(%s) was called.", path);
+    return rmdir(RS_PARENT(path));
+}
+
+int my_chdir(char *path)
+{
+    DEBUG("chdir(%s) was called.", path);
+    return chdir(resolve_symlink(path));
+}
+
+char *my_getcwd(char *buf, size_t size)
+{
+    getcwd(buf, size);
+    strlcpy(buf, rewrite_path_rev(buf), size);
+    DEBUG("getcwd() -> '%s' was called.", buf);
+    return buf;
 }
 
 DIR *my_opendir(char *path)

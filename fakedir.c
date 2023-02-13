@@ -20,6 +20,7 @@
 bool isdebug = false;
 
 static char pathbuf[PATH_MAX];
+static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
 
 static char *pattern;
@@ -40,6 +41,7 @@ static void __fakedir_init(void)
     }
 
     strlcpy(pathbuf, target, PATH_MAX);
+    strlcpy(rpathbuf, pattern, PATH_MAX);
     DEBUG("Initialized libfakedir with subtitution '%s' => '%s'", pattern, target);
 }
 
@@ -49,6 +51,17 @@ char *rewrite_path(char *path)
         strlcpy(pathbuf + strlen(target), path + strlen(pattern), PATH_MAX);
         DEBUG("Matched path '%s' to '%s'", path, pathbuf);
         return pathbuf;
+    } else {
+        return path;
+    }
+}
+
+char *rewrite_path_rev(char *path)
+{
+    if (target && !strncmp(path, target, strlen(target))) {
+        strlcpy(rpathbuf + strlen(pattern), path + strlen(target), PATH_MAX);
+        DEBUG("Reverse-matched path '%s' to '%s'", path, rpathbuf);
+        return rpathbuf;
     } else {
         return path;
     }
@@ -64,14 +77,12 @@ char *resolve_symlink_parent(char *path, int fd)
         if (workpath[i] == '/') {
             workpath[i] = 0;
             fname = workpath + i + 1;
-            DEBUG("Preserved filename as '%s'", fname);
             break;
         }
     }
-    DEBUG("Resolving symbolic link part '%s'", workpath);
     if (!fname) {
-        strlcpy(linkbuf, path, PATH_MAX);
-        return path;
+        strlcpy(linkbuf, rewrite_path(path), PATH_MAX);
+        return linkbuf;
     }
 
     if (fd >= 0)
@@ -80,7 +91,6 @@ char *resolve_symlink_parent(char *path, int fd)
         resolve_symlink(workpath);
     strlcat(linkbuf, "/", PATH_MAX);
     strlcat(linkbuf, fname, PATH_MAX);
-    DEBUG("Rebuilt path is '%s'", linkbuf);
     return rewrite_path(linkbuf);
 }
 
@@ -114,8 +124,9 @@ char *resolve_symlink(char *path)
         for (int i = off; i >= 0; i--)
             linkbuf[i] = wpath[i];
     }
-    DEBUG("Symbolic link '%s' resolved to '%s'", wpath, linkbuf);
-    return resolve_symlink(rewrite_path(linkbuf));
+    char *result = rewrite_path(linkbuf);
+    DEBUG("Symbolic link '%s' resolved to '%s'", wpath, result);
+    return resolve_symlink(result);
 }
 
 char *resolve_symlink_at(int fd, char *path)
@@ -142,30 +153,25 @@ char *resolve_symlink_at(int fd, char *path)
         for (int i = off; i >= 0; i--)
             linkbuf[i] = wpath[i];
     }
-    DEBUG("Symbolic link '%s' fd-resolved to '%s'", wpath, linkbuf);
-    return resolve_symlink_at(fd, rewrite_path(linkbuf));
+    char *result = rewrite_path(linkbuf);
+    DEBUG("Symbolic link '%s' fd-resolved to '%s'", wpath, result);
+    return resolve_symlink_at(fd, result);
 }
 
 static int execve_patch_envp(char *path, char *argv[], char *envp[])
 {
     DEBUG("Preparing envp for fakedir library loading");
     int envc = 0;
-    int dsr_idx = -1;   // DYLD_SHARED_REGION
-    int dscd_idx = -1;  // DYLD_SHARED_CACHE_DIR
     int dil_idx = -1;   // DYLD_INSERT_LIBRARIES
 
-#   define dsr_match "DYLD_SHARED_REGION="
-#   define dscd_match "DYLD_SHARED_CACHE_DIR="
 #   define dil_match "DYLD_INSERT_LIBRARIES="
 
-    char *dsr_full = dsr_match "private";
-    char dscd_full[strlen(dscd_match) + PATH_MAX];
-    char dil_full[strlen(dil_match) + PATH_MAX];
-    strncpy(dscd_full, dscd_match, strlen(dscd_match));
-    strncpy(dil_full, dil_match, strlen(dil_match));
+    char wpath[PATH_MAX];
+    strlcpy(wpath, path, PATH_MAX);
 
-    strlcat(dscd_full, getenv("HOME"), PATH_MAX);
-    strlcat(dscd_full, "/Library/fakedir-dyld", PATH_MAX);
+    char dil_full[strlen(dil_match) + PATH_MAX];
+    memset(dil_full, 0, strlen(dil_match) + PATH_MAX);
+    strncpy(dil_full, dil_match, strlen(dil_match));
 
     for (; envp[envc]; envc++)
         ;
@@ -173,37 +179,26 @@ static int execve_patch_envp(char *path, char *argv[], char *envp[])
     for (int i = 0; i < envc; i++) {
         if (! strncmp(envp[i], dil_match, strlen(dil_match)))
             dil_idx = i;
-        else if (! strncmp(envp[i], dsr_match, strlen(dsr_match)))
-            dsr_idx = i;
-        else if (! strncmp(envp[i], dscd_match, strlen(dscd_match)))
-            dscd_idx = i;
         new_envp[i] = envp[i];
     }
 
-    //TODO: build actual shared cache, probably by capturing all fakedir
-    // children and rewriting *.map accordingly
     //TODO: Locate and carry ourselves back into DYLD_INSERT_LIBRARIES
-    //TODO: Test injection without DYLD_SHARED_REGION=private to see if
-    // copying the system cache is needed
+    //TODO: Recursively read library dependents in requested binary and compile
+    // DYLD_INSERT_LIBRARIES to include them all.
+    // To avoid accidentally preloading a conflicting library version, we
+    // need to backup DYLD_INSERT_LIBRARIES before our autogen and pass it to
+    // the libfakedir-bound child to sort out.
+    // We'll also be breaking the Nix derivation builder's clean-env policy,
+    // so we need to absolutely make sure our hack won't break results.
 
-    new_envp[dscd_idx == -1 ? envc++ : dscd_idx] = dscd_full;
     new_envp[dil_idx == -1 ? envc++ : dil_idx] = dil_full;
-    new_envp[dsr_idx == -1 ? envc++ : dsr_idx] = dsr_full;
+    new_envp[envc] = 0;
 
-    return execve(path, argv, new_envp);
+    return execve(wpath, argv, new_envp);
 }
 
 int my_execve(char *path, char *argv[], char *envp[])
 {
-    //TODO: trick the linker into loading libs in our fakedir
-    // We might actually be able to do that by building a shared cache where
-    // libraries are bound without "existing", just like macOS itself does.
-    // So, for instance, if my program wants /nix/store/xxx-lol/lib/lol.dylib
-    // then we inject the real library under the fake path in our binary cache
-    // before executing.
-    // Thus we need to add DYLD_SHARED_REGION=private, copy system shared cache
-    // and use DYLD_SHARED_CACHE_DIR=$HOME/Library/fakedir-dyld or something.
-
     DEBUG("execve(%s) was called.", path);
     int tgt = my_open(path, O_RDONLY, 0000);
     char shebang[PATH_MAX];
@@ -318,6 +313,22 @@ static void *interpose[] =  { my_open       , open
                             , my_symlinkat  , symlinkat
                             , my_readlink   , readlink
                             , my_readlinkat , readlinkat
+                            , my_clonefile  , clonefile
+                            , my_clonefileat, clonefileat
+                            , my_fclonefileat, fclonefileat
+                            , my_exchangedata, exchangedata
+                            , my_truncate   , truncate
+                            , my_utimes     , utimes
+                            , my_rename     , rename
+                            , my_renameat   , renameat
+                            , my_renamex_np , renamex_np
+                            , my_renameatx_np, renameatx_np
+                            , my_undelete   , undelete
+                            , my_mkdir      , mkdir
+                            , my_mkdirat    , mkdirat
+                            , my_rmdir      , rmdir
+                            , my_chdir      , chdir
+                            , my_getcwd     , getcwd
                             };
 
 // vim: ft=c.doxygen
