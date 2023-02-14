@@ -38,6 +38,16 @@ extern bool isdebug;
 extern const char *ownpath;
 
 /**
+ * @brief   Value of FAKEDIR_PATTERN, the fake directory.
+ */
+extern const char *pattern;
+
+/**
+ * @brief   Value of FAKEDIR_TARGET, the real directory to rewrite pattern to.
+ */
+extern const char *target;
+
+/**
  * @brief   Prints to stderr if FAKEDIR_DEBUG is set.
  * @param p     Format string for @ref printf
  * @param args  Additional arguments for @ref printf

@@ -27,8 +27,8 @@ static char pathbuf[PATH_MAX];
 static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
 
-static char *pattern;
-static char *target;
+const char *pattern;
+const char *target;
 
 __attribute__((constructor))
 static void __fakedir_init(void)
@@ -196,7 +196,6 @@ int my_execve(char *path, char *argv[], char *envp[])
 
     if (canexec && !strncmp(shebang, "#!", 2)) {
         DEBUG("Executable '%s' has a shebang, parsing...", path);
-        argv[0] = path;
         return execve_parse_shebang(shebang, argv, envp);
     }
 

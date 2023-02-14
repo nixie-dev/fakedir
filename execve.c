@@ -15,9 +15,16 @@ int execve_patch_envp(char *path, char *argv[], char *envp[])
     DEBUG("Preparing envp for fakedir library loading");
     int envc = 0;
     int dil_idx = -1;   // DYLD_INSERT_LIBRARIES
+    int fpa_idx = -1;   // FAKEDIR_PATTERN
+    int fta_idx = -1;   // FAKEDIR_TARGET
 
 #   define dil_match "DYLD_INSERT_LIBRARIES="
 #   define dil_size strlen(dil_match) + (PATH_MAX * 10)
+
+#   define fpa_match "FAKEDIR_PATTERN="
+#   define fpa_size strlen(fpa_match) + strlen(pattern) + 1
+#   define fta_match "FAKEDIR_TARGET="
+#   define fta_size strlen(fta_match) + strlen(target) + 1
 
     char wpath[PATH_MAX];
     strlcpy(wpath, path, PATH_MAX);
@@ -26,15 +33,31 @@ int execve_patch_envp(char *path, char *argv[], char *envp[])
     memset(dil_full, 0, dil_size);
     strncpy(dil_full, dil_match, strlen(dil_match));
 
+    char fpa_full[fpa_size];
+    char fta_full[fta_size];
+    memset(fpa_full, 0, fpa_size);
+    memset(fta_full, 0, fta_size);
+    strncpy(fpa_full, fpa_match, strlen(fpa_match));
+    strncpy(fta_full, fta_match, strlen(fta_match));
+
+    // Restore and prevent tampering with fakedir parameters
+    strlcat(fpa_full, pattern, fpa_size);
+    strlcat(fta_full, target, fta_size);
+
     for (; envp[envc]; envc++)
         ;
     char *new_envp[envc + 4];
     for (int i = 0; i < envc; i++) {
         if (startswith(dil_match, envp[i]))
             dil_idx = i;
+        else if (startswith(fpa_match, envp[i]))
+            fpa_idx = i;
+        else if (startswith(fta_match, envp[i]))
+            fta_idx = i;
         new_envp[i] = envp[i];
     }
 
+    // Keep ourselves in DYLD_INSERT_LIBRARIES no matter what
     strlcat(dil_full, ownpath, dil_size);
 
     //TODO: Recursively read library dependents in requested binary and compile
@@ -48,6 +71,8 @@ int execve_patch_envp(char *path, char *argv[], char *envp[])
     DEBUG("Running with %s", dil_full);
 
     new_envp[dil_idx == -1 ? envc++ : dil_idx] = dil_full;
+    new_envp[fpa_idx == -1 ? envc++ : fpa_idx] = fpa_full;
+    new_envp[fta_idx == -1 ? envc++ : fta_idx] = fta_full;
     new_envp[envc] = 0;
 
     return execve(wpath, argv, new_envp);
