@@ -68,7 +68,7 @@ bool startswith(char const *pattern, char const *msg)
     return ! strncmp(msg, pattern, strlen(pattern));
 }
 
-char *rewrite_path(char *path)
+char const *rewrite_path(char const *path)
 {
     if (pattern && startswith(pattern, path)) {
         strlcpy(pathbuf + strlen(target), path + strlen(pattern), PATH_MAX);
@@ -79,7 +79,7 @@ char *rewrite_path(char *path)
     }
 }
 
-char *rewrite_path_rev(char *path)
+char const *rewrite_path_rev(char const *path)
 {
     if (target && startswith(target, path)) {
         strlcpy(rpathbuf + strlen(pattern), path + strlen(target), PATH_MAX);
@@ -90,7 +90,7 @@ char *rewrite_path_rev(char *path)
     }
 }
 
-char *resolve_symlink_parent(char *path, int fd)
+char const *resolve_symlink_parent(char const *path, int fd)
 {
     char workpath[PATH_MAX];
     char *fname = NULL;
@@ -117,7 +117,7 @@ char *resolve_symlink_parent(char *path, int fd)
     return rewrite_path(linkbuf);
 }
 
-char *resolve_symlink(char *path)
+char const *resolve_symlink(char const *path)
 {
     char wpath[PATH_MAX];
     strlcpy(wpath, path, PATH_MAX);
@@ -131,7 +131,7 @@ char *resolve_symlink(char *path)
 
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path
-        char *result = resolve_symlink_parent(path, -1);
+        char const *result = resolve_symlink_parent(path, -1);
         DEBUG("Symbolic link '%s' recursively resolved to '%s'", path, result);
         return result;
     }
@@ -147,12 +147,12 @@ char *resolve_symlink(char *path)
         for (int i = off; i >= 0; i--)
             linkbuf[i] = wpath[i];
     }
-    char *result = rewrite_path(linkbuf);
+    char const *result = rewrite_path(linkbuf);
     DEBUG("Symbolic link '%s' resolved to '%s'", wpath, result);
     return resolve_symlink(result);
 }
 
-char *resolve_symlink_at(int fd, char *path)
+char const *resolve_symlink_at(int fd, char const *path)
 {
     char wpath[PATH_MAX];
     strlcpy(wpath, path, PATH_MAX);
@@ -161,7 +161,7 @@ char *resolve_symlink_at(int fd, char *path)
 
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path
-        char *result = resolve_symlink_parent(path, fd);
+        char const *result = resolve_symlink_parent(path, fd);
         DEBUG("Symbolic link '%s' recursively fd-resolved to '%s'", path, result);
     }
     linkbuf[linklen] = 0;
@@ -176,12 +176,12 @@ char *resolve_symlink_at(int fd, char *path)
         for (int i = off; i >= 0; i--)
             linkbuf[i] = wpath[i];
     }
-    char *result = rewrite_path(linkbuf);
+    char const *result = rewrite_path(linkbuf);
     DEBUG("Symbolic link '%s' fd-resolved to '%s'", wpath, result);
     return resolve_symlink_at(fd, result);
 }
 
-int my_execve(char *path, char *argv[], char *envp[])
+int my_execve(char const *path, char *argv[], char *envp[])
 {
     DEBUG("execve(%s) was called.", path);
     int tgt = my_open(path, O_RDONLY, 0000);

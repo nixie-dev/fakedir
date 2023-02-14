@@ -64,7 +64,7 @@ extern const char *target;
  * @param path  The path to be rewritten
  * @return  A string representing the rewritten path.
  */
-char *rewrite_path(char *path);
+char const *rewrite_path(char const *path);
 
 /**
  * This function performs the reverse operation to @ref rewrite_path, that is
@@ -75,7 +75,7 @@ char *rewrite_path(char *path);
  * @param path  The path to be rewritten
  * @return  A string represneting the rewritten path.
  */
-char *rewrite_path_rev(char *path);
+char const *rewrite_path_rev(char const *path);
 
 /**
  * This function resolves all symbolic links through the given path down
@@ -89,7 +89,7 @@ char *rewrite_path_rev(char *path);
  * @return  A string representing the resolved path.
  * @see Mutually recursive with @ref resolve_symlink and @ref resolve_symlink_at
  */
-char *resolve_symlink_parent(char *path, int fd);
+char const *resolve_symlink_parent(char const *path, int fd);
 
 /**
  * This function performs a recursive resolution of all symbolic links
@@ -102,7 +102,7 @@ char *resolve_symlink_parent(char *path, int fd);
  * @return  A string representing the resolved path
  * @see Mutually recursive with @ref resolve_symlink_parent
  */
-char *resolve_symlink(char *path);
+char const *resolve_symlink(char const *path);
 
 /**
  * This function is an alternative entry point into the recursive symbolic
@@ -115,7 +115,7 @@ char *resolve_symlink(char *path);
  * @see Functionally equivalent to @ref resolve_symlink
  * @see Mutually recursive with @ref resolve_symlink_parent
  */
-char *resolve_symlink_at(int fd, char *path);
+char const *resolve_symlink_at(int fd, char const *path);
 
 /**
  * This function performs a limited length match against msg. If the contents

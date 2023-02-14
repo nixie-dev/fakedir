@@ -26,7 +26,7 @@
  *              actual environment set will be modified upon exec.
  * @return  Only on failure, the code that execve() returns.
  */
-int execve_patch_envp(char *path, char *argv[], char *envp[]);
+int execve_patch_envp(char const *path, char *argv[], char *envp[]);
 
 /**
  * This function is responsible for parsing the hash-bang line at the start of
@@ -43,6 +43,6 @@ int execve_patch_envp(char *path, char *argv[], char *envp[]);
  * @param envp  The array of environment entries to launch with zero-terminated
  * @return  Only on failure, the code that execve() returns.
  */
-int execve_parse_shebang(char *bang, char *argv[], char *envp[]);
+int execve_parse_shebang(char const *bang, char *argv[], char *envp[]);
 
 // vim: ft=c.doxygen

@@ -3,14 +3,55 @@
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 
-extern int my_execve(char *path, char *av[], char *ep[]);
+extern int my_execve(char const *path, char *av[], char *ep[]);
 
-static void macho_add_dependencies(char *path, char *dil)
+static void macho_add_dependencies(char const *path, char *dil)
 {
+    int fd = my_open(path, O_RDONLY, 0000);
+    if (!fd) return;
 
+    struct mach_header_64 hdr = {};
+    struct load_command lcmd = {};
+
+    read(fd, &hdr, sizeof hdr);
+    if (hdr.magic != MH_MAGIC_64) {
+        DEBUG("Not a Mach-O executable: %s", path);
+        return;
+    }
+
+    for (int i = 0; i < hdr.ncmds; i++) {
+        read(fd, &lcmd, sizeof lcmd);
+        if ( lcmd.cmd == LC_LOAD_DYLIB
+          || lcmd.cmd == LC_LOAD_WEAK_DYLIB
+          || lcmd.cmd == LC_REEXPORT_DYLIB) {
+            union {
+                char data[lcmd.cmdsize - sizeof lcmd];
+                struct dylib misc;
+            } dl;
+            read(fd, &dl, sizeof dl);
+
+            const char *lname = dl.data + dl.misc.name.offset - sizeof lcmd;
+            DEBUG("Found library '%s'", lname);
+            if (startswith(pattern, lname)) {
+                strncat(dil, ":", 1);
+                strlcat(dil, resolve_symlink(lname), PATH_MAX * 10);
+                // Recurse through libraries
+                macho_add_dependencies(lname, dil);
+            }
+        } else {
+            lseek(fd, lcmd.cmdsize - sizeof lcmd, SEEK_CUR);
+        }
+    }
+
+    close(fd);
+
+    // Apparently there's a library called libredirect in Nixpkgs which does a
+    // very primitive version of our rewriting work, but our rewrite of
+    // DYLD_INSERT_LIBRARIES might interfere.
+    // AFAICT it is only used in an OpenSSH unit test, and its own tests.
 }
 
-int execve_patch_envp(char *path, char *argv[], char *envp[])
+int execve_patch_envp(char const *path, char *argv[], char *envp[])
 {
     DEBUG("Preparing envp for fakedir library loading");
     int envc = 0;
@@ -59,14 +100,7 @@ int execve_patch_envp(char *path, char *argv[], char *envp[])
 
     // Keep ourselves in DYLD_INSERT_LIBRARIES no matter what
     strlcat(dil_full, ownpath, dil_size);
-
-    //TODO: Recursively read library dependents in requested binary and compile
-    // DYLD_INSERT_LIBRARIES to include them all.
-    // To avoid accidentally preloading a conflicting library version, we
-    // need to backup DYLD_INSERT_LIBRARIES before our autogen and pass it to
-    // the libfakedir-bound child to sort out.
-    // We'll also be breaking the Nix derivation builder's clean-env policy,
-    // so we need to absolutely make sure our hack won't break results.
+    macho_add_dependencies(path, dil_full);
 
     DEBUG("Running with %s", dil_full);
 
@@ -78,7 +112,7 @@ int execve_patch_envp(char *path, char *argv[], char *envp[])
     return execve(wpath, argv, new_envp);
 }
 
-int execve_parse_shebang(char *shebang, char *argv[], char *envp[])
+int execve_parse_shebang(char const *shebang, char *argv[], char *envp[])
 {
     char my_path[PATH_MAX]; // This will be the path to our interpreter
     char my_args[PATH_MAX]; // This will be the following argument (if any)
