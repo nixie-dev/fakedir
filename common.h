@@ -99,4 +99,15 @@ char *resolve_symlink(char *path);
  */
 char *resolve_symlink_at(int fd, char *path);
 
+/**
+ * This function performs a limited length match against msg. If the contents
+ * of msg match those of pat until the end of pat, the function returns true.
+ *
+ * @brief   Check if a string starts with another string.
+ * @param pat   The pattern to use for comparison count.
+ * @param msg   The string to check against.
+ * @return  True if the start of msg is the contents of pat, False otherwise.
+ */
+bool startswith(char const *pat, char const *msg);
+
 // vim: ft=c.doxygen
