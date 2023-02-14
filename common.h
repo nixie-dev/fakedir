@@ -13,6 +13,8 @@
 #include <sys/attr.h>
 #include <sys/time.h>
 
+#include <mach-o/dyld.h>
+
 /**
  * @file        common.h
  * @author      Karim Vergnes <me@thesola.io>
@@ -28,6 +30,12 @@
  * @see DEBUG   Debug printing macro which uses this variable
  */
 extern bool isdebug;
+
+/**
+ * @brief   Dynamically loaded path to ourselves, for preservation across exec
+ * @see execve_patch_envp uses this variable
+ */
+extern const char *ownpath;
 
 /**
  * @brief   Prints to stderr if FAKEDIR_DEBUG is set.

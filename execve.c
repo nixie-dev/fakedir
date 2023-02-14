@@ -5,6 +5,11 @@
 
 extern int my_execve(char *path, char *av[], char *ep[]);
 
+static void macho_add_dependencies(char *path, char *dil)
+{
+
+}
+
 int execve_patch_envp(char *path, char *argv[], char *envp[])
 {
     DEBUG("Preparing envp for fakedir library loading");
@@ -30,7 +35,8 @@ int execve_patch_envp(char *path, char *argv[], char *envp[])
         new_envp[i] = envp[i];
     }
 
-    //TODO: Locate and carry ourselves back into DYLD_INSERT_LIBRARIES
+    strlcat(dil_full, ownpath, dil_size);
+
     //TODO: Recursively read library dependents in requested binary and compile
     // DYLD_INSERT_LIBRARIES to include them all.
     // To avoid accidentally preloading a conflicting library version, we
@@ -38,6 +44,8 @@ int execve_patch_envp(char *path, char *argv[], char *envp[])
     // the libfakedir-bound child to sort out.
     // We'll also be breaking the Nix derivation builder's clean-env policy,
     // so we need to absolutely make sure our hack won't break results.
+
+    DEBUG("Running with %s", dil_full);
 
     new_envp[dil_idx == -1 ? envc++ : dil_idx] = dil_full;
     new_envp[envc] = 0;

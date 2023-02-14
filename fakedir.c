@@ -21,6 +21,8 @@
 
 bool isdebug = false;
 
+const char *ownpath;
+
 static char pathbuf[PATH_MAX];
 static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
@@ -44,6 +46,17 @@ static void __fakedir_init(void)
         dprintf(2, "Variable FAKEDIR_PATTERN may not be a subset of FAKEDIR_TARGET.\n");
         exit(1);
     }
+
+#   define selfname "libfakedir.dylib"
+    int nimgs = _dyld_image_count();
+    for (int i = 1; i < nimgs; i++) {
+        ownpath = _dyld_get_image_name(i);
+        if (! strncmp( ownpath + strlen(ownpath) - strlen(selfname)
+                     , selfname
+                     , strlen(selfname)))
+            break;
+    }
+    DEBUG("I think I am '%s'", ownpath);
 
     strlcpy(pathbuf, target, PATH_MAX);
     strlcpy(rpathbuf, pattern, PATH_MAX);
@@ -183,6 +196,7 @@ int my_execve(char *path, char *argv[], char *envp[])
 
     if (canexec && !strncmp(shebang, "#!", 2)) {
         DEBUG("Executable '%s' has a shebang, parsing...", path);
+        argv[0] = path;
         return execve_parse_shebang(shebang, argv, envp);
     }
 
