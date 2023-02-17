@@ -1,4 +1,5 @@
 #include "common.h"
+#include "trivial_replacements.h"
 
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
@@ -24,13 +25,11 @@ static void macho_add_dependencies(char const *path, char *dil)
         if ( lcmd.cmd == LC_LOAD_DYLIB
           || lcmd.cmd == LC_LOAD_WEAK_DYLIB
           || lcmd.cmd == LC_REEXPORT_DYLIB) {
-            union {
-                char data[lcmd.cmdsize - sizeof lcmd];
-                struct dylib misc;
-            } dl;
-            read(fd, &dl, sizeof dl);
+            char dld[lcmd.cmdsize - sizeof lcmd];
+            read(fd, dld, sizeof dld);
+            struct dylib *dl = &dld;
 
-            const char *lname = dl.data + dl.misc.name.offset - sizeof lcmd;
+            const char *lname = &dld + dl->name.offset - sizeof lcmd;
             DEBUG("Found library '%s'", lname);
             if (startswith(pattern, lname)) {
                 strncat(dil, ":", 1);
