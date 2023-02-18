@@ -208,9 +208,11 @@ static void *interpose[] =  { my_open       , open
                             , my_openat     , openat
                             , my_execve     , execve
                             , my_lstat      , lstat
-                            , my_lstat      , lstat64
                             , my_stat       , stat
+#ifdef __x86_64__
+                            , my_lstat      , lstat64
                             , my_stat       , stat64
+#endif
                             , my_fstatat    , fstatat
                             , my_access     , access
                             , my_faccessat  , faccessat

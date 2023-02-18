@@ -27,9 +27,9 @@ static void macho_add_dependencies(char const *path, char *dil)
           || lcmd.cmd == LC_REEXPORT_DYLIB) {
             char dld[lcmd.cmdsize - sizeof lcmd];
             read(fd, dld, sizeof dld);
-            struct dylib *dl = &dld;
+            struct dylib *dl = dld;
 
-            const char *lname = &dld + dl->name.offset - sizeof lcmd;
+            const char *lname = dld + dl->name.offset - sizeof lcmd;
             DEBUG("Found library '%s'", lname);
             if (startswith(pattern, lname)) {
                 strncat(dil, ":", 1);
