@@ -1,4 +1,4 @@
-{ clang, darwin, stdenv, ... }:
+{ stdenv, ... }:
 stdenv.mkDerivation {
   pname = "fakedir";
   version = "0.1.0";
