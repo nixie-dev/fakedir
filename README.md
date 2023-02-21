@@ -2,7 +2,7 @@
 
 Fakedir is a simple library, meant to trick as many `libSystem` calls into believing a given directory exists in another place. To achieve that, we resolve symlinks and rewrite paths until the resulting system calls points towards the original directory. _(what do you mean, "malware"?)_
 
-This project's intended purpose is for use within [nix-wrap](https://github.com/thesola10/nix-wrap), but it is generic enough for anyone to use.
+This project's intended purpose is for use within [nixie](https://github.com/thesola10/nixie), but it is generic enough for anyone to use.
 
 ## How to use
 
@@ -36,6 +36,4 @@ Cyclic symbolic links are not detected and will result in a stack overflow, due 
 
 The fakedir library itself may not be located in the fake directory.
 
-<!--
 Calling fakedir's `execve()` may result in a very large `DYLD_INSERT_LIBRARIES` environment variable, as we currently cannot hook into `dyld`'s own understanding of the filesystem.
--->
