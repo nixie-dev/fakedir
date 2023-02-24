@@ -2,7 +2,7 @@
 
 Fakedir is a simple library, meant to trick as many `libSystem` calls into believing a given directory exists in another place. To achieve that, we resolve symlinks and rewrite paths until the resulting system calls points towards the original directory. _(what do you mean, "malware"?)_
 
-This project's intended purpose is for use within [nixie](https://github.com/thesola10/nixie), but it is generic enough for anyone to use.
+This project's intended purpose is for use within [nixie](https://github.com/nixie-dev/nixie), but it is generic enough for anyone to use.
 
 ## How to use
 
