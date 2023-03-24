@@ -295,12 +295,6 @@ int my_setattrlist(char const *path, struct attrlist *attrList, void *attrBuf, s
     return setattrlist(RS_PARENT(path), attrList, attrBuf, attrBufSize, options);
 }
 
-int my_setattrlistat(int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, uint32_t options)
-{
-    DEBUG("setattrlistat(%s) was called.", path);
-    return setattrlistat(fd, resolve_symlink_parent(path, fd), attrList, attrBuf, attrBufSize, options);
-}
-
 int my_getattrlist(char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options)
 {
     DEBUG("getattrlist(%s) was called.", path);

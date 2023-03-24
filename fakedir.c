@@ -266,9 +266,6 @@ static void *interpose[] =  { my_open       , open
                             , my_setxattr   , setxattr
                             , my_pathconf   , pathconf
                             , my_setattrlist, setattrlist
-#ifndef __x86_64__
-                            , my_setattrlistat, setattrlistat
-#endif
                             , my_getattrlist, getattrlist
                             , my_getattrlistat, getattrlistat
                             , my_getcwd     , getcwd
