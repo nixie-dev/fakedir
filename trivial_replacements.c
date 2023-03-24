@@ -265,6 +265,54 @@ int my_statfs(char const *path, struct statfs *buf)
     return statfs(resolve_symlink(path), buf);
 }
 
+ssize_t my_listxattr(char const *path, char *buf, size_t size, int options)
+{
+    DEBUG("listxattr(%s) was called.", path);
+    return listxattr(RS_PARENT(path), buf, size, options);
+}
+
+int my_removexattr(char const *path, char const *name, int options)
+{
+    DEBUG("removexattr(%s) was called.", path);
+    return removexattr(RS_PARENT(path), name, options);
+}
+
+int my_setxattr(char const *path, char const *name, void *value, size_t size, u_int32_t position, int options)
+{
+    DEBUG("setxattr(%s) was called.", path);
+    return setxattr(RS_PARENT(path), name, value, size, position, options);
+}
+
+int my_pathconf(char const *path, int name)
+{
+    DEBUG("pathconf(%s) was called.", path);
+    return pathconf(RS_PARENT(path), name);
+}
+
+int my_setattrlist(char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options)
+{
+    DEBUG("setattrlist(%s) was called.", path);
+    return setattrlist(RS_PARENT(path), attrList, attrBuf, attrBufSize, options);
+}
+
+int my_setattrlistat(int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, uint32_t options)
+{
+    DEBUG("setattrlistat(%s) was called.", path);
+    return setattrlistat(fd, resolve_symlink_parent(path, fd), attrList, attrBuf, attrBufSize, options);
+}
+
+int my_getattrlist(char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options)
+{
+    DEBUG("getattrlist(%s) was called.", path);
+    return getattrlist(RS_PARENT(path), attrList, attrBuf, attrBufSize, options);
+}
+
+int my_getattrlistat(int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options)
+{
+    DEBUG("getattrlistat(%s) was called.", path);
+    return getattrlistat(fd, resolve_symlink_parent(path, fd), attrList, attrBuf, attrBufSize, options);
+}
+
 char const *my_getcwd(char *buf, size_t size)
 {
     getcwd(buf, size);

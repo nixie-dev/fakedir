@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 /**
@@ -50,6 +51,15 @@ int my_mkdirat(int fd, char const *path, mode_t mode);
 int my_rmdir(char const *path);
 int my_chdir(char const *path);
 int my_statfs(char const *path, struct statfs *buf);
+ssize_t my_listxattr(char const *path, char *buf, size_t size, int options);
+int my_removexattr(char const *path, char const *name, int options);
+int my_setxattr(char const *path, char const *name, void *value, size_t size, u_int32_t position, int options);
+int my_pathconf(char const *path, int name);
+int my_setattrlist(char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options);
+int my_setattrlistat(int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, uint32_t options);
+int my_getattrlist(char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options);
+int my_getattrlistat(int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options);
+
 char const *my_getcwd(char *buf, size_t size);
 
 DIR *my_opendir(char const *path);

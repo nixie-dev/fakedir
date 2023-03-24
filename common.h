@@ -14,6 +14,8 @@
 #include <sys/time.h>
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/xattr.h>
+#include <stdint.h>
 
 #include <mach-o/dyld.h>
 
