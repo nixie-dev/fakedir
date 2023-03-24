@@ -49,6 +49,7 @@ int my_mkdir(char const *path, mode_t mode);
 int my_mkdirat(int fd, char const *path, mode_t mode);
 int my_rmdir(char const *path);
 int my_chdir(char const *path);
+int my_statfs(char const *path, struct statfs *buf);
 char const *my_getcwd(char *buf, size_t size);
 
 DIR *my_opendir(char const *path);

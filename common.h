@@ -12,6 +12,8 @@
 #include <sys/clonefile.h>
 #include <sys/attr.h>
 #include <sys/time.h>
+#include <sys/param.h>
+#include <sys/mount.h>
 
 #include <mach-o/dyld.h>
 

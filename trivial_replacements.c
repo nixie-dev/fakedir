@@ -259,6 +259,12 @@ int my_chdir(char const *path)
     return chdir(resolve_symlink(path));
 }
 
+int my_statfs(char const *path, struct statfs *buf)
+{
+    DEBUG("statfs(%s) was called.", path);
+    return statfs(resolve_symlink(path), buf);
+}
+
 char const *my_getcwd(char *buf, size_t size)
 {
     getcwd(buf, size);

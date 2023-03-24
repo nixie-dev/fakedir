@@ -253,6 +253,8 @@ static void *interpose[] =  { my_open       , open
                             , my_mkdirat    , mkdirat
                             , my_rmdir      , rmdir
                             , my_chdir      , chdir
+                            , my_statfs     , statfs
+                            , my_statfs     , statfs64
                             , my_getcwd     , getcwd
                             };
 
