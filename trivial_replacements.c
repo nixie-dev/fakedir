@@ -64,7 +64,7 @@ int my_faccessat(int fd, char const *path, int mode, int flag)
 int my_chflags(char const *path, int flags)
 {
     DEBUG("chflags(%s) was called.", path);
-    return chflags(resolve_symlink(path), flags);
+    return chflags(RS_PARENT(path), flags);
 }
 
 int my_mkfifo(char const *path, mode_t mode)
