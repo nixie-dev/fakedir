@@ -26,6 +26,7 @@ const char *ownpath;
 static char pathbuf[PATH_MAX];
 static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
+static char dedupbuf[PATH_MAX];
 
 const char *pattern;
 const char *target;
@@ -75,7 +76,9 @@ char const *rewrite_path(char const *path)
         DEBUG("Matched path '%s' to '%s'", path, pathbuf);
         return pathbuf;
     } else {
-        return path;
+        if (path != dedupbuf)
+            strlcpy(dedupbuf, path, PATH_MAX);
+        return dedupbuf;
     }
 }
 
@@ -86,7 +89,9 @@ char const *rewrite_path_rev(char const *path)
         DEBUG("Reverse-matched path '%s' to '%s'", path, rpathbuf);
         return rpathbuf;
     } else {
-        return path;
+        if (path != dedupbuf)
+            strlcpy(dedupbuf, path, PATH_MAX);
+        return dedupbuf;
     }
 }
 
@@ -163,6 +168,7 @@ char const *resolve_symlink_at(int fd, char const *path)
         // Symlink resolution failed, recurse through path
         char const *result = resolve_symlink_parent(path, fd);
         DEBUG("Symbolic link '%s' recursively fd-resolved to '%s'", path, result);
+        return result;
     }
     linkbuf[linklen] = 0;
     if (linkbuf[0] != '/') {

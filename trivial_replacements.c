@@ -261,7 +261,7 @@ int my_chdir(char const *path)
 
 char const *my_getcwd(char *buf, size_t size)
 {
-    buf = getcwd(buf, size);
+    getcwd(buf, size);
     strlcpy(buf, rewrite_path_rev(buf), size);
     DEBUG("getcwd() -> '%s' was called.", buf);
     return buf;
