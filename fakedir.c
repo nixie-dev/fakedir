@@ -71,6 +71,8 @@ bool startswith(char const *pattern, char const *msg)
 
 char const *rewrite_path(char const *path)
 {
+    if (startswith("/.", path))
+        path += 2;
     if (pattern && startswith(pattern, path)) {
         strlcpy(pathbuf + strlen(target), path + strlen(pattern), PATH_MAX);
         DEBUG("Matched path '%s' to '%s'", path, pathbuf);
@@ -84,6 +86,8 @@ char const *rewrite_path(char const *path)
 
 char const *rewrite_path_rev(char const *path)
 {
+    if (startswith("/.", path))
+        path += 2;
     if (target && startswith(target, path)) {
         strlcpy(rpathbuf + strlen(pattern), path + strlen(target), PATH_MAX);
         DEBUG("Reverse-matched path '%s' to '%s'", path, rpathbuf);
