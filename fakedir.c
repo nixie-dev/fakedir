@@ -55,7 +55,7 @@ static void __fakedir_init(void)
 
 #   define selfname "libfakedir.dylib"
     int nimgs = _dyld_image_count();
-    for (int i = 1; i < nimgs; i++) {
+    for (int i = 0; i < nimgs; i++) {
         ownpath = _dyld_get_image_name(i);
         if (! strncmp( ownpath + strlen(ownpath) - strlen(selfname)
                      , selfname
