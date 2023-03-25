@@ -112,7 +112,9 @@ int my_link(char const *path1, char const *path2)
 int my_linkat(int fd1, char const *path1, int fd2, char const *path2, int flag)
 {
     DEBUG("linkat(%s, %s) was called.", path1, path2);
-    return linkat(fd1, rs_at_flagged(fd1, path1, flag), fd2, rs_at_flagged(fd2, path2, flag), flag);
+    const char *newp1 = (flag & AT_SYMLINK_FOLLOW) ? resolve_symlink_at(fd1, path1)
+                                                   : resolve_symlink_parent(path1, fd1);
+    return linkat(fd1, newp1, fd2, resolve_symlink_parent(path2, fd2), flag);
 }
 
 int my_unlink(char const *path)
@@ -124,7 +126,7 @@ int my_unlink(char const *path)
 int my_unlinkat(int fd, char const *path, int flag)
 {
     DEBUG("unlinkat(%s) was called.", path);
-    return unlinkat(fd, rs_at_flagged(fd, path, flag), flag);
+    return unlinkat(fd, resolve_symlink_parent(path, fd), flag);
 }
 
 int my_symlink(char const *what, char const *path)
