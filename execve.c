@@ -4,7 +4,7 @@
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 
-extern int my_execve(char const *path, char *av[], char *ep[]);
+extern int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *av[], char *ep[]);
 
 static void macho_add_dependencies(char const *path, char *dil)
 {
@@ -50,7 +50,7 @@ static void macho_add_dependencies(char const *path, char *dil)
     // AFAICT it is only used in an OpenSSH unit test, and its own tests.
 }
 
-int execve_patch_envp(char const *path, char *argv[], char *envp[])
+int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[])
 {
     DEBUG("Preparing envp for fakedir library loading");
     int envc = 0;
@@ -108,10 +108,13 @@ int execve_patch_envp(char const *path, char *argv[], char *envp[])
     new_envp[fta_idx == -1 ? envc++ : fta_idx] = fta_full;
     new_envp[envc] = 0;
 
-    return execve(wpath, argv, new_envp);
+    if (pid == PSP_EXEC)
+        return execve(wpath, argv, new_envp);
+    else
+        return posix_spawn(pid, wpath, facts, attrp, argv, new_envp);
 }
 
-int execve_parse_shebang(char const *shebang, char *argv[], char *envp[])
+int pspawn_parse_shebang(pid_t *pid, char const *shebang, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[])
 {
     char my_path[PATH_MAX]; // This will be the path to our interpreter
     char my_args[PATH_MAX]; // This will be the following argument (if any)
@@ -180,5 +183,5 @@ int execve_parse_shebang(char const *shebang, char *argv[], char *envp[])
     }
 
     // Fun fact: shebangs are recursive! Scripts can be interpreters too!
-    return my_execve(resolve_symlink(my_path), new_argv, envp);
+    return my_posix_spawn(pid, resolve_symlink(my_path), facts, attrp, new_argv, envp);
 }

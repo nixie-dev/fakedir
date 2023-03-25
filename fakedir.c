@@ -170,9 +170,9 @@ char const *resolve_symlink_at(int fd, char const *path)
     return resolve_symlink_at(fd, result);
 }
 
-int my_execve(char const *path, char *argv[], char *envp[])
+int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[])
 {
-    DEBUG("execve(%s) was called.", path);
+    DEBUG("posix_spawn(%s) was called.", path);
     int tgt = my_open(path, O_RDONLY, 0000);
     char shebang[PATH_MAX];
 
@@ -185,10 +185,17 @@ int my_execve(char const *path, char *argv[], char *envp[])
 
     if (canexec && !strncmp(shebang, "#!", 2)) {
         DEBUG("Executable '%s' has a shebang, parsing...", path);
-        return execve_parse_shebang(shebang, argv, envp);
+        return pspawn_parse_shebang(pid, shebang, facts, attrp, argv, envp);
     }
 
-    return execve_patch_envp(resolve_symlink(path), argv, envp);
+    return pspawn_patch_envp(pid, resolve_symlink(path), facts, attrp, argv, envp);
+
+}
+
+int my_execve(char const *path, char *argv[], char *envp[])
+{
+    DEBUG("execve(%s) was called.", path);
+    return my_posix_spawn(PSP_EXEC, path, NULL, NULL, argv, envp);
 }
 
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -196,6 +203,7 @@ __attribute__((used, section("__DATA,__interpose")))
 static void *interpose[] =  { my_open       , open
                             , my_openat     , openat
                             , my_execve     , execve
+                            , my_posix_spawn, posix_spawn
                             , my_lstat      , lstat
                             , my_stat       , stat
 #ifdef __x86_64__

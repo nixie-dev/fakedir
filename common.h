@@ -16,6 +16,7 @@
 #include <sys/mount.h>
 #include <sys/xattr.h>
 #include <stdint.h>
+#include <spawn.h>
 
 #include <mach-o/dyld.h>
 
@@ -50,6 +51,12 @@ extern const char *pattern;
  * @brief   Value of FAKEDIR_TARGET, the real directory to rewrite pattern to.
  */
 extern const char *target;
+
+/**
+ * @brief   Special constant to tell pspawn_patch_envp() to use execve()
+ *          instead.
+ */
+#define PSP_EXEC -15
 
 #ifndef STRIP_DEBUG
 /**
@@ -136,5 +143,6 @@ char const *resolve_symlink_at(int fd, char const *path);
  * @return  True if the start of msg is the contents of pat, False otherwise.
  */
 bool startswith(char const *pat, char const *msg);
+
 
 // vim: ft=c.doxygen

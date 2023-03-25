@@ -13,6 +13,8 @@
  * those, through rewriting DYLD_INSERT_LIBRARIES.
  */
 
+#include <spawn.h>
+
 /**
  * This function is responsible for parsing a Mach-O binary, and launching it
  * with all required libraries located in our fakedir resolved and appended
@@ -20,13 +22,14 @@
  * environment variable no matter what.
  *
  * @brief   Parses and appends libs in fakedir to environment, then executes.
+ * @param pid   If equal to PSP_EXEC, run execve() instead of posix_spawn()
  * @param path  The path to the executable to launch.
  * @param argv  The array of arguments to launch with, zero-terminated.
  * @param envp  The array of environment entries to use as reference, the
  *              actual environment set will be modified upon exec.
  * @return  Only on failure, the code that execve() returns.
  */
-int execve_patch_envp(char const *path, char *argv[], char *envp[]);
+int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[]);
 
 /**
  * This function is responsible for parsing the hash-bang line at the start of
@@ -43,6 +46,6 @@ int execve_patch_envp(char const *path, char *argv[], char *envp[]);
  * @param envp  The array of environment entries to launch with zero-terminated
  * @return  Only on failure, the code that execve() returns.
  */
-int execve_parse_shebang(char const *bang, char *argv[], char *envp[]);
+int pspawn_parse_shebang(pid_t *pid, char const *bang, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[]);
 
 // vim: ft=c.doxygen
