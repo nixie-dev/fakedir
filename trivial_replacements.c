@@ -106,7 +106,9 @@ int my_fchownat(int fd, char const *path, uid_t owner, gid_t group, int flag)
 int my_link(char const *path1, char const *path2)
 {
     DEBUG("link(%s, %s) was called.", path1, path2);
-    return link(RS_PARENT(path1), RS_PARENT(path2));
+    char newp1[PATH_MAX];
+    strlcpy(newp1, RS_PARENT(path1), PATH_MAX);
+    return link(newp1, RS_PARENT(path2));
 }
 
 int my_linkat(int fd1, char const *path1, int fd2, char const *path2, int flag)
@@ -212,25 +214,33 @@ int my_utimes(char const *path, struct timeval times[2])
 int my_rename(char const *from, char const *to)
 {
     DEBUG("rename(%s,%s) was called.", from, to);
-    return rename(RS_PARENT(from), RS_PARENT(to));
+    char newp1[PATH_MAX];
+    strlcpy(newp1, RS_PARENT(from), PATH_MAX);
+    return rename(newp1, RS_PARENT(to));
 }
 
 int my_renameat(int fd1, char const *from, int fd2, char const *to)
 {
     DEBUG("renameat(%s,%s) was called.", from, to);
-    return renameat(fd1, resolve_symlink_parent(from, fd1), fd2, resolve_symlink_parent(to, fd2));
+    char newp1[PATH_MAX];
+    strlcpy(newp1, resolve_symlink_parent(from, fd1), PATH_MAX);
+    return renameat(fd1, newp1, fd2, resolve_symlink_parent(to, fd2));
 }
 
 int my_renamex_np(char const *from, char const *to, int flags)
 {
     DEBUG("renamex_np(%s,%s) was called.", from, to);
-    return renamex_np(RS_PARENT(from), RS_PARENT(to), flags);
+    char newp1[PATH_MAX];
+    strlcpy(newp1, RS_PARENT(from), PATH_MAX);
+    return renamex_np(newp1, RS_PARENT(to), flags);
 }
 
 int my_renameatx_np(int fd1, char const *from, int fd2, char const *to, int flags)
 {
     DEBUG("renameatx_np(%s,%s) was called.", from, to);
-    return renameatx_np(fd1, resolve_symlink_parent(from, fd1), fd2, resolve_symlink_parent(to, fd2), flags);
+    char newp1[PATH_MAX];
+    strlcpy(newp1, resolve_symlink_parent(from, fd1), PATH_MAX);
+    return renameatx_np(fd1, newp1, fd2, resolve_symlink_parent(to, fd2), flags);
 }
 
 int my_undelete(char const *path)
