@@ -156,6 +156,8 @@ int my_open(char const *name, int flags, int mode)
     DEBUG("open(%s) was called.", name);
     if (flags & (O_SYMLINK|O_NOFOLLOW))
         return open(RS_PARENT(name), flags, mode);
+    else if (flags & O_NOFOLLOW_ANY)
+        return open(rewrite_path(name), flags, mode);
     else
         return open(resolve_symlink(name), flags, mode);
 }

@@ -48,6 +48,11 @@ static void __fakedir_init(void)
         exit(1);
     }
 
+#   ifdef STRIP_DEBUG
+    if (isdebug)
+        dprintf(2, "WARNING: This build was configured without debug messages.\n");
+#   endif
+
 #   define selfname "libfakedir.dylib"
     int nimgs = _dyld_image_count();
     for (int i = 1; i < nimgs; i++) {
@@ -123,42 +128,8 @@ char const *resolve_symlink_parent(char const *path, int fd)
         resolve_symlink(workpath);
     strlcat(linkbuf, "/", PATH_MAX);
     strlcat(linkbuf, fname, PATH_MAX);
+    DEBUG("Resolved parent: %s -> %s", path, linkbuf);
     return rewrite_path(linkbuf);
-}
-
-char const *resolve_symlink(char const *path)
-{
-    char wpath[PATH_MAX];
-    strlcpy(wpath, path, PATH_MAX);
-    // There is a chance we're being fed our own work buffer, save it.
-
-    ssize_t linklen = readlink(rewrite_path(path), linkbuf, PATH_MAX);
-    //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ look familiar?
-    //                  well, nope. This, unlike my_readlink, is an atom.
-    //                  If you were to use my_readlink here instead, don't.
-    //                  The resulting recursion model would fry my brain.
-
-    if (linklen < 0) {
-        // Symlink resolution failed, recurse through path
-        char const *result = resolve_symlink_parent(path, -1);
-        DEBUG("Symbolic link '%s' recursively resolved to '%s'", path, result);
-        return result;
-    }
-    linkbuf[linklen] = 0;
-    if (linkbuf[0] != '/') {
-        // Symlink is relative, copy it to end of buffer then rewrite parent
-        int off = strlen(wpath);
-        for (; off > 0; off--)
-            if (wpath[off] == '/')
-                break;
-        for (int i = off + linklen; i >= 0; i--)
-            linkbuf[i + off + 1] = linkbuf[i];
-        for (int i = off; i >= 0; i--)
-            linkbuf[i] = wpath[i];
-    }
-    char const *result = rewrite_path(linkbuf);
-    DEBUG("Symbolic link '%s' resolved to '%s'", wpath, result);
-    return resolve_symlink(result);
 }
 
 char const *resolve_symlink_at(int fd, char const *path)
@@ -166,7 +137,15 @@ char const *resolve_symlink_at(int fd, char const *path)
     char wpath[PATH_MAX];
     strlcpy(wpath, path, PATH_MAX);
 
-    ssize_t linklen = readlinkat(fd, rewrite_path(path), linkbuf, PATH_MAX);
+    ssize_t linklen;
+    if (fd >= 0)
+        linklen = readlinkat(fd, rewrite_path(path), linkbuf, PATH_MAX);
+    else
+        linklen = readlink(rewrite_path(path), linkbuf, PATH_MAX);
+        //        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ look familiar?
+        //          well, nope. This, unlike my_readlink, is an atom.
+        //          If you were to use my_readlink here instead, don't.
+        //          The resulting recursion model would fry my brain.
 
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path

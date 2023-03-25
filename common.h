@@ -51,13 +51,18 @@ extern const char *pattern;
  */
 extern const char *target;
 
+#ifndef STRIP_DEBUG
 /**
  * @brief   Prints to stderr if FAKEDIR_DEBUG is set.
  * @param p     Format string for @ref printf
  * @param args  Additional arguments for @ref printf
  */
-#define DEBUG(p, args...) \
+# define DEBUG(p, args...) \
     if (isdebug) dprintf(2, p "\n", ## args)
+
+#else
+# define DEBUG(p, args...) ;
+#endif
 
 /**
  * This function compares the start of a path string with FAKEDIR_PATTERN.
@@ -106,7 +111,7 @@ char const *resolve_symlink_parent(char const *path, int fd);
  * @return  A string representing the resolved path
  * @see Mutually recursive with @ref resolve_symlink_parent
  */
-char const *resolve_symlink(char const *path);
+#define resolve_symlink(path) resolve_symlink_at(-1, path)
 
 /**
  * This function is an alternative entry point into the recursive symbolic
