@@ -51,6 +51,9 @@ static void __fakedir_init(void)
 #   ifdef STRIP_DEBUG
     if (isdebug)
         dprintf(2, "WARNING: This build was configured without debug messages.\n");
+#   elif defined(ALWAYS_DEBUG)
+    dprintf(2, "WARNING: This build was configured with mandatory debug messages.\n");
+    isdebug = true;
 #   endif
 
 #   define selfname "libfakedir.dylib"
@@ -172,7 +175,8 @@ char const *resolve_symlink_at(int fd, char const *path)
 
 int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[])
 {
-    DEBUG("posix_spawn(%s) was called.", path);
+    if (pid != PSP_EXEC)
+        DEBUG("posix_spawn(%s) was called.", path);
     int tgt = my_open(path, O_RDONLY, 0000);
     char shebang[PATH_MAX];
 

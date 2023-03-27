@@ -108,6 +108,10 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
     new_envp[fta_idx == -1 ? envc++ : fta_idx] = fta_full;
     new_envp[envc] = 0;
 
+    DEBUG("wpath: %1$lx ('%1$s')", wpath);
+    DEBUG("argv: %lx ([0]='%s')", argv, argv[0]);
+    DEBUG("envp: %lx ([0]='%s')", envp, envp[0]);
+    DEBUG("pid: %ld", pid);
     if (pid == PSP_EXEC)
         return execve(wpath, argv, new_envp);
     else
