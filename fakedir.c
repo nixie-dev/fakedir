@@ -202,6 +202,8 @@ int my_execve(char const *path, char *argv[], char *envp[])
 __attribute__((used, section("__DATA,__interpose")))
 static void *interpose[] =  { my_open       , open
                             , my_openat     , openat
+                            , my_fopen      , fopen
+                            , my_freopen    , freopen
                             , my_execve     , execve
                             , my_posix_spawn, posix_spawn
                             , my_lstat      , lstat

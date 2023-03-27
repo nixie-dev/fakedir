@@ -1,5 +1,6 @@
 #include <dirent.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/types.h>
 
 /**
@@ -13,6 +14,8 @@
  * It should reflect the contents of @ref trivial_replacements.c exactly.
  */
 
+FILE *my_fopen(char const *path, char const *mode);
+FILE *my_freopen(char const *path, char const *mode, FILE *orig);
 int my_open(char const *name, int flags, int mode);
 int my_openat(int fd, char const *name, int flags, int mode);
 int my_lstat(char const *path, struct stat *buf);

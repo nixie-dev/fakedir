@@ -155,6 +155,18 @@ ssize_t my_readlinkat(int fd, char const *path, char *buf, size_t bsz)
     return readlinkat(fd, rs_at_flagged(fd, path, 0), buf, bsz);
 }
 
+FILE *my_fopen(char const *path, char const *mode)
+{
+    DEBUG("fopen(%s) was called.", path);
+    return fopen(resolve_symlink(path), mode);
+}
+
+FILE *my_freopen(char const *path, char const *mode, FILE *orig)
+{
+    DEBUG("freopen(%s) was called.", path);
+    return freopen(resolve_symlink(path), mode, orig);
+}
+
 int my_open(char const *name, int flags, int mode)
 {
     DEBUG("open(%s) was called.", name);
