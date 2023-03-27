@@ -10,6 +10,8 @@
  * pattern, so they have been grouped here for easier reading.
  */
 
+void macho_add_dependencies(char const *path, void (*e)(char const *));
+
 #define RS_PARENT(p) resolve_symlink_parent(p, -1)
 
 static char const *rs_at_flagged(int fd, char const *path, int flags)
@@ -24,6 +26,26 @@ static char const *rs_at_flagged(int fd, char const *path, int flags)
         return resolve_symlink_at(fd, path);
 }
 
+void *my_dlopen(char const *path, int mode);
+
+void _my_dlopen_inner(char const *path)
+{
+    DEBUG("recursing through dlopen '%s'", path);
+    my_dlopen(path, RTLD_GLOBAL|RTLD_NOW);
+}
+
+void *my_dlopen(char const *path, int mode)
+{
+    DEBUG("dlopen(%s) was called.", path);
+    if (path) {
+        char realp[PATH_MAX];
+        strlcpy(realp, resolve_symlink(path), PATH_MAX);
+        macho_add_dependencies(realp, _my_dlopen_inner);
+        return dlopen(realp, mode);
+    } else {
+        return dlopen(path, mode);
+    }
+}
 
 int my_openat(int fd, char const *name, int flags, int mode)
 {

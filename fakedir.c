@@ -60,9 +60,7 @@ static void __fakedir_init(void)
     int nimgs = _dyld_image_count();
     for (int i = 0; i < nimgs; i++) {
         ownpath = _dyld_get_image_name(i);
-        if (! strncmp( ownpath + strlen(ownpath) - strlen(selfname)
-                     , selfname
-                     , strlen(selfname)))
+        if (endswith(selfname, ownpath))
             break;
     }
     DEBUG("I think I am '%s'", ownpath);
@@ -74,7 +72,16 @@ static void __fakedir_init(void)
 
 bool startswith(char const *pattern, char const *msg)
 {
+    if (strlen(pattern) > strlen(msg))
+        return false;
     return ! strncmp(msg, pattern, strlen(pattern));
+}
+
+bool endswith(char const *pattern, char const *msg)
+{
+    if (strlen(pattern) > strlen(msg))
+        return false;
+    return ! strncmp(msg + strlen(msg) - strlen(pattern), pattern, strlen(pattern));
 }
 
 char const *rewrite_path(char const *path)
@@ -83,7 +90,6 @@ char const *rewrite_path(char const *path)
         path += 2;
     if (pattern && startswith(pattern, path)) {
         strlcpy(pathbuf + strlen(target), path + strlen(pattern), PATH_MAX);
-        DEBUG("Matched path '%s' to '%s'", path, pathbuf);
         return pathbuf;
     } else {
         if (path != dedupbuf)
@@ -98,7 +104,6 @@ char const *rewrite_path_rev(char const *path)
         path += 2;
     if (target && startswith(target, path)) {
         strlcpy(rpathbuf + strlen(pattern), path + strlen(target), PATH_MAX);
-        DEBUG("Reverse-matched path '%s' to '%s'", path, rpathbuf);
         return rpathbuf;
     } else {
         if (path != dedupbuf)
@@ -131,7 +136,6 @@ char const *resolve_symlink_parent(char const *path, int fd)
         resolve_symlink(workpath);
     strlcat(linkbuf, "/", PATH_MAX);
     strlcat(linkbuf, fname, PATH_MAX);
-    DEBUG("Resolved parent: %s -> %s", path, linkbuf);
     return rewrite_path(linkbuf);
 }
 
@@ -153,7 +157,6 @@ char const *resolve_symlink_at(int fd, char const *path)
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path
         char const *result = resolve_symlink_parent(path, fd);
-        DEBUG("Symbolic link '%s' recursively fd-resolved to '%s'", path, result);
         return result;
     }
     linkbuf[linklen] = 0;
@@ -169,7 +172,6 @@ char const *resolve_symlink_at(int fd, char const *path)
             linkbuf[i] = wpath[i];
     }
     char const *result = rewrite_path(linkbuf);
-    DEBUG("Symbolic link '%s' fd-resolved to '%s'", wpath, result);
     return resolve_symlink_at(fd, result);
 }
 
@@ -206,6 +208,7 @@ int my_execve(char const *path, char *argv[], char *envp[])
 __attribute__((used, section("__DATA,__interpose")))
 static void *interpose[] =  { my_open       , open
                             , my_openat     , openat
+                            , my_dlopen     , dlopen
                             , my_fopen      , fopen
                             , my_freopen    , freopen
                             , my_execve     , execve

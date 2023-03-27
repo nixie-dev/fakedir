@@ -16,6 +16,7 @@
 
 FILE *my_fopen(char const *path, char const *mode);
 FILE *my_freopen(char const *path, char const *mode, FILE *orig);
+void *my_dlopen(char const *path, int mode);
 int my_open(char const *name, int flags, int mode);
 int my_openat(int fd, char const *name, int flags, int mode);
 int my_lstat(char const *path, struct stat *buf);

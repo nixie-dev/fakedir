@@ -6,7 +6,18 @@
 
 extern int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *av[], char *ep[]);
 
-static void macho_add_dependencies(char const *path, char *dil)
+#   define dil_match "DYLD_INSERT_LIBRARIES="
+#   define dil_size strlen(dil_match) + (PATH_MAX * 10)
+char dil_full[dil_size];
+
+void add_dil_rec(char const *lname)
+{
+    strncat(dil_full, ":", 1);
+    strlcat(dil_full, resolve_symlink(lname), PATH_MAX * 10);
+    macho_add_dependencies(lname, add_dil_rec);
+}
+
+void macho_add_dependencies(char const *path, void (*step)(char const *d))
 {
     int fd = my_open(path, O_RDONLY, 0000);
     if (!fd) return;
@@ -31,11 +42,8 @@ static void macho_add_dependencies(char const *path, char *dil)
 
             const char *lname = dld + dl->name.offset - sizeof lcmd;
             DEBUG("Found library '%s'", lname);
-            if (startswith(pattern, lname)) {
-                strncat(dil, ":", 1);
-                strlcat(dil, resolve_symlink(lname), PATH_MAX * 10);
-                // Recurse through libraries
-                macho_add_dependencies(lname, dil);
+            if (startswith(pattern, lname) && ! endswith(lname, path)) {
+                step(lname);
             }
         } else {
             lseek(fd, lcmd.cmdsize - sizeof lcmd, SEEK_CUR);
@@ -58,8 +66,6 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
     int fpa_idx = -1;   // FAKEDIR_PATTERN
     int fta_idx = -1;   // FAKEDIR_TARGET
 
-#   define dil_match "DYLD_INSERT_LIBRARIES="
-#   define dil_size strlen(dil_match) + (PATH_MAX * 10)
 
 #   define fpa_match "FAKEDIR_PATTERN="
 #   define fpa_size strlen(fpa_match) + strlen(pattern) + 1
@@ -69,7 +75,6 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
     char wpath[PATH_MAX];
     strlcpy(wpath, path, PATH_MAX);
 
-    char dil_full[dil_size];
     memset(dil_full, 0, dil_size);
     strncpy(dil_full, dil_match, strlen(dil_match));
 
@@ -99,7 +104,7 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
 
     // Keep ourselves in DYLD_INSERT_LIBRARIES no matter what
     strlcat(dil_full, ownpath, dil_size);
-    macho_add_dependencies(path, dil_full);
+    macho_add_dependencies(path, add_dil_rec);
 
     DEBUG("Running with %s", dil_full);
 

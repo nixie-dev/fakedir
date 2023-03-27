@@ -17,6 +17,7 @@
 #include <sys/xattr.h>
 #include <stdint.h>
 #include <spawn.h>
+#include <dlfcn.h>
 
 #include <mach-o/dyld.h>
 
@@ -70,6 +71,15 @@ extern const char *target;
 #else
 # define DEBUG(p, args...) ;
 #endif
+
+/**
+ * This function parses a Mach-O binary, and calls a function for each library
+ * found that needs rewriting.
+ *
+ * @param path  The path to the binary to parse
+ * @param step  The handler to call on match
+ */
+void macho_add_dependencies(char const *path, void (*step)(char const *d));
 
 /**
  * This function compares the start of a path string with FAKEDIR_PATTERN.
@@ -144,5 +154,16 @@ char const *resolve_symlink_at(int fd, char const *path);
  */
 bool startswith(char const *pat, char const *msg);
 
+/**
+ * This function performs a limited length match against the end of msg. If the
+ * contents of the end of msg match those of pat until the end of both, the
+ * function returns true.
+ *
+ * @brief   Check if a string ends with another string.
+ * @param pat   The pattern to use for comparison count and offset.
+ * @param msg   The string to check against.
+ * @return  True if the end of msg is the contents of pat, False otherwise.
+ */
+bool endswith(char const *pattern, char const *msg);
 
 // vim: ft=c.doxygen
