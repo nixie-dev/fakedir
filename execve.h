@@ -39,6 +39,7 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
  * event that said interpreter is located in our fakedir.
  *
  * @brief   Parses shebang and calls script interpreter with arguments.
+ * @param spath The string containing the actual path to the script
  * @param bang  The string containing the shebang line (starting with #!).
  * @param argv  The array of arguments for the script, to use as reference.
  *              argv[0] must be the correct path to the script, as it will
@@ -46,6 +47,6 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
  * @param envp  The array of environment entries to launch with zero-terminated
  * @return  Only on failure, the code that execve() returns.
  */
-int pspawn_parse_shebang(pid_t *pid, char const *bang, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[]);
+int pspawn_parse_shebang(pid_t *pid, char const *spath, char const *bang, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[]);
 
 // vim: ft=c.doxygen

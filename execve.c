@@ -108,23 +108,21 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
     new_envp[fta_idx == -1 ? envc++ : fta_idx] = fta_full;
     new_envp[envc] = 0;
 
-    DEBUG("wpath: %1$lx ('%1$s')", wpath);
-    DEBUG("argv: %lx ([0]='%s')", argv, argv[0]);
-    DEBUG("envp: %lx ([0]='%s')", envp, envp[0]);
-    DEBUG("pid: %ld", pid);
     if (pid == PSP_EXEC)
         return execve(wpath, argv, new_envp);
     else
         return posix_spawn(pid, wpath, facts, attrp, argv, new_envp);
 }
 
-int pspawn_parse_shebang(pid_t *pid, char const *shebang, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[])
+int pspawn_parse_shebang(pid_t *pid, char const *spath, char const *shebang, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[])
 {
     char my_path[PATH_MAX]; // This will be the path to our interpreter
     char my_args[PATH_MAX]; // This will be the following argument (if any)
                             // UNIX shebangs only permit a single argument
                             // before the actual file, which makes our job
                             // way easier.
+    char my_spath[PATH_MAX];// Local copy of our script path
+    strlcpy(my_spath, spath, PATH_MAX);
 
     int path_start = 2;
     int path_len = 0;       // Start and length of interpreter path
@@ -163,7 +161,7 @@ int pspawn_parse_shebang(pid_t *pid, char const *shebang, const posix_spawn_file
             break;
 
     // ... so that we can stack-allocate our new one.
-    char *new_argv[our_argc + 2];
+    char *new_argv[our_argc + 3];
 
     // Populate path and arg strings then formulate execve()
     strncpy(my_path, shebang + path_start, path_len);
@@ -178,14 +176,16 @@ int pspawn_parse_shebang(pid_t *pid, char const *shebang, const posix_spawn_file
         new_argv[1] = my_args;
         for (int i = 0; argv[i]; i++)
             new_argv[i + 2] = argv[i];
+        new_argv[2] = my_spath;
         new_argv[our_argc + 2] = 0;
     } else {
         // Without argument
         for (int i = 0; argv[i]; i++)
             new_argv[i + 1] = argv[i];
+        new_argv[1] = my_spath;
         new_argv[our_argc + 1] = 0;
     }
 
     // Fun fact: shebangs are recursive! Scripts can be interpreters too!
-    return my_posix_spawn(pid, resolve_symlink(my_path), facts, attrp, new_argv, envp);
+    return my_posix_spawn(pid, my_path, facts, attrp, new_argv, envp);
 }

@@ -189,7 +189,7 @@ int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_
 
     if (canexec && !strncmp(shebang, "#!", 2)) {
         DEBUG("Executable '%s' has a shebang, parsing...", path);
-        return pspawn_parse_shebang(pid, shebang, facts, attrp, argv, envp);
+        return pspawn_parse_shebang(pid, resolve_symlink(path), shebang, facts, attrp, argv, envp);
     }
 
     return pspawn_patch_envp(pid, resolve_symlink(path), facts, attrp, argv, envp);
