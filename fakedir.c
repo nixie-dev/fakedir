@@ -1,5 +1,4 @@
 #include "common.h"
-#include "trivial_replacements.h"
 #include "execve.h"
 
 
@@ -27,6 +26,7 @@ static char pathbuf[PATH_MAX];
 static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
 static char dedupbuf[PATH_MAX];
+sem_t *_lock;
 
 const char *pattern;
 const char *target;
@@ -67,7 +67,15 @@ static void __fakedir_init(void)
 
     strlcpy(pathbuf, target, PATH_MAX);
     strlcpy(rpathbuf, pattern, PATH_MAX);
+
+    sem_init(_lock, false, 1);
     DEBUG("Initialized libfakedir with subtitution '%s' => '%s'", pattern, target);
+}
+
+__attribute__((destructor))
+static void __fakedir_fini(void)
+{
+    sem_destroy(_lock);
 }
 
 bool startswith(char const *pattern, char const *msg)
@@ -203,68 +211,5 @@ int my_execve(char const *path, char *argv[], char *envp[])
     DEBUG("execve(%s) was called.", path);
     return my_posix_spawn(PSP_EXEC, path, NULL, NULL, argv, envp);
 }
-
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-__attribute__((used, section("__DATA,__interpose")))
-static void *interpose[] =  { my_open       , open
-                            , my_openat     , openat
-                            , my_dlopen     , dlopen
-                            , my_fopen      , fopen
-                            , my_freopen    , freopen
-                            , my_execve     , execve
-                            , my_posix_spawn, posix_spawn
-                            , my_lstat      , lstat
-                            , my_stat       , stat
-#ifdef __x86_64__
-                            , my_lstat      , lstat64
-                            , my_stat       , stat64
-#endif
-                            , my_fstatat    , fstatat
-                            , my_access     , access
-                            , my_faccessat  , faccessat
-                            , my_opendir    , opendir
-                            , my_chflags    , chflags
-                            , my_mkfifo     , mkfifo
-                            , my_chmod      , chmod
-                            , my_fchmodat   , fchmodat
-                            , my_chown      , chown
-                            , my_lchown     , lchown
-                            , my_fchownat   , fchownat
-                            , my_link       , link
-                            , my_linkat     , linkat
-                            , my_unlink     , unlink
-                            , my_unlinkat   , unlinkat
-                            , my_symlink    , symlink
-                            , my_symlinkat  , symlinkat
-                            , my_readlink   , readlink
-                            , my_readlinkat , readlinkat
-                            , my_clonefile  , clonefile
-                            , my_clonefileat, clonefileat
-                            , my_fclonefileat, fclonefileat
-                            , my_exchangedata, exchangedata
-                            , my_truncate   , truncate
-                            , my_utimes     , utimes
-                            , my_rename     , rename
-                            , my_renameat   , renameat
-                            , my_renamex_np , renamex_np
-                            , my_renameatx_np, renameatx_np
-                            , my_undelete   , undelete
-                            , my_mkdir      , mkdir
-                            , my_mkdirat    , mkdirat
-                            , my_rmdir      , rmdir
-                            , my_chdir      , chdir
-                            , my_statfs     , statfs
-#ifdef __x86_64__
-                            , my_statfs     , statfs64
-#endif
-                            , my_listxattr  , listxattr
-                            , my_removexattr, removexattr
-                            , my_setxattr   , setxattr
-                            , my_pathconf   , pathconf
-                            , my_setattrlist, setattrlist
-                            , my_getattrlist, getattrlist
-                            , my_getattrlistat, getattrlistat
-                            , my_getcwd     , getcwd
-                            };
 
 // vim: ft=c.doxygen

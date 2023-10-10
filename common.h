@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <spawn.h>
 #include <dlfcn.h>
+#include <semaphore.h>
 
 #include <mach-o/dyld.h>
 
@@ -36,6 +37,11 @@
  * @see DEBUG   Debug printing macro which uses this variable
  */
 extern bool isdebug;
+
+/**
+ * @brief   Strictly locks syscall rewrite operations.
+ */
+extern sem_t *_lock;
 
 /**
  * @brief   Dynamically loaded path to ourselves, for preservation across exec

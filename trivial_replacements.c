@@ -12,6 +12,22 @@
 
 void macho_add_dependencies(char const *path, void (*e)(char const *));
 
+#define SUBST(T, n, p)  \
+    __attribute__((used, section("__DATA,__interpose"))) \
+        extern T n p;                                    \
+        T _my_##n p;                                     \
+        static void *_##n = { _my_##n , n };             \
+        T _my_##n p {                                    \
+            sem_wait(_lock);                             \
+            DEBUG("Now serving %s", #n );                \
+            T _r = ({
+
+#define ENDSUBST \
+            });                                          \
+            sem_post(_lock);                             \
+            return _r;                                   \
+        }
+
 #define RS_PARENT(p) resolve_symlink_parent(p, -1)
 
 static char const *rs_at_flagged(int fd, char const *path, int flags)
@@ -47,311 +63,234 @@ void *my_dlopen(char const *path, int mode)
     }
 }
 
-int my_openat(int fd, char const *name, int flags, int mode)
-{
-    DEBUG("openat(%s) was called.", name);
-    return openat(fd, rs_at_flagged(fd, name, flags), flags, mode);
-}
+SUBST(void *, dlopen, (char const *path, int mode))
+    my_dlopen(path, mode);
+ENDSUBST
 
-int my_lstat(char const *path, struct stat *buf)
-{
-    DEBUG("lstat(%s) was called.", path);
-    return lstat(RS_PARENT(path), buf);
-}
+SUBST(int, openat, (int fd, char const *name, int flags, int mode))
+    openat(fd, rs_at_flagged(fd, name, flags), flags, mode);
+ENDSUBST
 
-int my_stat(char const *path, struct stat *buf)
-{
-    DEBUG("stat(%s) was called.", path);
-    return stat(resolve_symlink(path), buf);
-}
+SUBST(int, lstat, (char const *path, struct stat *buf))
+    lstat(RS_PARENT(path), buf);
+ENDSUBST
 
-int my_fstatat(int fd, char const *path, struct stat *buf, int flag)
-{
-    DEBUG("fstatat(%s) was called.", path);
-    return fstatat(fd, rs_at_flagged(fd, path, flag), buf, flag);
-}
+SUBST(int, stat, (char const *path, struct stat *buf))
+    stat(resolve_symlink(path), buf);
+ENDSUBST
 
-int my_access(char const *path, int mode)
-{
-    DEBUG("access(%s) was called.", path);
-    return access(resolve_symlink(path), mode);
-}
+SUBST(int, fstatat, (int fd, char const *path, struct stat *buf, int flag))
+    fstatat(fd, rs_at_flagged(fd, path, flag), buf, flag);
+ENDSUBST
 
-int my_faccessat(int fd, char const *path, int mode, int flag)
-{
-    DEBUG("faccessat(%s) was called.", path);
-    return faccessat(fd, rs_at_flagged(fd, path, flag), mode, flag);
-}
+SUBST(int, my_access, (char const *path, int mode))
+    access(resolve_symlink(path), mode);
+ENDSUBST
 
-int my_chflags(char const *path, int flags)
-{
-    DEBUG("chflags(%s) was called.", path);
-    return chflags(RS_PARENT(path), flags);
-}
+SUBST(int, faccessat, (int fd, char const *path, int mode, int flag))
+    faccessat(fd, rs_at_flagged(fd, path, flag), mode, flag);
+ENDSUBST
 
-int my_mkfifo(char const *path, mode_t mode)
-{
-    DEBUG("mkfifo(%s) was called.", path);
-    return mkfifo(RS_PARENT(path), mode);
-}
+SUBST(int, chflags, (char const *path, int flags))
+    chflags(RS_PARENT(path), flags);
+ENDSUBST
 
-int my_chmod(char const *path, mode_t mode)
-{
-    DEBUG("chmod(%s) was called.", path);
-    return chmod(resolve_symlink(path), mode);
-}
+SUBST(int, mkfifo, (char const *path, mode_t mode))
+    mkfifo(RS_PARENT(path), mode);
+ENDSUBST
 
-int my_fchmodat(int fd, char const *path, mode_t mode, int flag)
-{
-    DEBUG("fchmodat(%s) was called.", path);
-    return fchmodat(fd, rs_at_flagged(fd, path, flag), mode, flag);
-}
+SUBST(int, chmod, (char const *path, mode_t mode))
+    chmod(resolve_symlink(path), mode);
+ENDSUBST
 
-int my_chown(char const *path, uid_t owner, gid_t group)
-{
-    DEBUG("chown(%s) was called.", path);
-    return chown(resolve_symlink(path), owner, group);
-}
+SUBST(int, fchmodat, (int fd, char const *path, mode_t mode, int flag))
+    fchmodat(fd, rs_at_flagged(fd, path, flag), mode, flag);
+ENDSUBST
 
-int my_lchown(char const *path, uid_t owner, gid_t group)
-{
-    DEBUG("lchown(%s) was called.", path);
-    return lchown(RS_PARENT(path), owner, group);
-}
+SUBST(int, chown, (char const *path, uid_t owner, gid_t group))
+    chown(resolve_symlink(path), owner, group);
+ENDSUBST
 
-int my_fchownat(int fd, char const *path, uid_t owner, gid_t group, int flag)
-{
-    DEBUG("fchownat(%s) was called.", path);
-    return fchownat(fd, rs_at_flagged(fd, path, flag), owner, group, flag);
-}
+SUBST(int, lchown, (char const *path, uid_t owner, gid_t group))
+    lchown(RS_PARENT(path), owner, group);
+ENDSUBST
 
-int my_link(char const *path1, char const *path2)
-{
-    DEBUG("link(%s, %s) was called.", path1, path2);
+SUBST(int, fchownat, (int fd, char const *path, uid_t owner, gid_t group, int flag))
+    fchownat(fd, rs_at_flagged(fd, path, flag), owner, group, flag);
+ENDSUBST
+
+SUBST(int, link, (char const *path1, char const *path2))
     char newp1[PATH_MAX];
     strlcpy(newp1, RS_PARENT(path1), PATH_MAX);
-    return link(newp1, RS_PARENT(path2));
-}
+    link(newp1, RS_PARENT(path2));
+ENDSUBST
 
-int my_linkat(int fd1, char const *path1, int fd2, char const *path2, int flag)
-{
-    DEBUG("linkat(%s, %s) was called.", path1, path2);
+SUBST(int, linkat, 
+        (int fd1, char const *path1, int fd2, char const *path2, int flag))
     const char *newp1 = (flag & AT_SYMLINK_FOLLOW) ? resolve_symlink_at(fd1, path1)
                                                    : resolve_symlink_parent(path1, fd1);
-    return linkat(fd1, newp1, fd2, resolve_symlink_parent(path2, fd2), flag);
-}
+    linkat(fd1, newp1, fd2, resolve_symlink_parent(path2, fd2), flag);
+ENDSUBST
 
-int my_unlink(char const *path)
-{
-    DEBUG("unlink(%s) was called.", path);
-    return unlink(RS_PARENT(path));
-}
+SUBST(int, unlink, (char const *path))
+    unlink(RS_PARENT(path));
+ENDSUBST
 
-int my_unlinkat(int fd, char const *path, int flag)
-{
-    DEBUG("unlinkat(%s) was called.", path);
-    return unlinkat(fd, resolve_symlink_parent(path, fd), flag);
-}
+SUBST(int, unlinkat, (int fd, char const *path, int flag))
+    unlinkat(fd, resolve_symlink_parent(path, fd), flag);
+ENDSUBST
 
-int my_symlink(char const *what, char const *path)
-{
-    DEBUG("symlink(%s) was called.", path);
-    return symlink(what, RS_PARENT(path));
-}
+SUBST(int, symlink, (char const *what, char const *path))
+    symlink(what, RS_PARENT(path));
+ENDSUBST
 
-int my_symlinkat(char const *what, int fd, char const *path)
-{
-    DEBUG("symlinkat(%s) was called.", path);
-    return symlinkat(what, fd, rs_at_flagged(fd, path, 0));
-}
+SUBST(int, symlinkat, (char const *what, int fd, char const *path))
+    symlinkat(what, fd, rs_at_flagged(fd, path, 0));
+ENDSUBST
 
-ssize_t my_readlink(char const *path, char *buf, size_t bsz)
-{
-    DEBUG("readlink(%s) was called.", path);
-    return readlink(RS_PARENT(path), buf, bsz);
-}
+SUBST(ssize_t, readlink, (char const *path, char *buf, size_t bsz))
+    readlink(RS_PARENT(path), buf, bsz);
+ENDSUBST
 
-ssize_t my_readlinkat(int fd, char const *path, char *buf, size_t bsz)
-{
-    DEBUG("readlinkat(%s) was called.", path);
-    return readlinkat(fd, rs_at_flagged(fd, path, 0), buf, bsz);
-}
+SUBST(ssize_t, readlinkat, (int fd, char const *path, char *buf, size_t bsz))
+    readlinkat(fd, rs_at_flagged(fd, path, 0), buf, bsz);
+ENDSUBST
 
-FILE *my_fopen(char const *path, char const *mode)
-{
-    DEBUG("fopen(%s) was called.", path);
-    return fopen(resolve_symlink(path), mode);
-}
+SUBST(FILE *, fopen, (char const *path, char const *mode))
+    fopen(resolve_symlink(path), mode);
+ENDSUBST
 
-FILE *my_freopen(char const *path, char const *mode, FILE *orig)
-{
-    DEBUG("freopen(%s) was called.", path);
-    return freopen(resolve_symlink(path), mode, orig);
-}
+SUBST(FILE *, freopen, (char const *path, char const *mode, FILE *orig))
+    freopen(resolve_symlink(path), mode, orig);
+ENDSUBST
 
-int my_open(char const *name, int flags, int mode)
-{
-    DEBUG("open(%s) was called.", name);
+SUBST(int, open, (char const *name, int flags, int mode))
+    char *n;
     if (flags & (O_SYMLINK|O_NOFOLLOW))
-        return open(RS_PARENT(name), flags, mode);
+        n = RS_PARENT(name);
     else
-        return open(resolve_symlink(name), flags, mode);
-}
+        n = resolve_symlink(name);
+    open(n, flags, mode);
+ENDSUBST
 
-int my_clonefile(char const *path1, char const *path2, int flags)
-{
-    DEBUG("clonefile(%s,%s) was called.", path1, path2);
-    if (flags & CLONE_NOFOLLOW)
-        return clonefile(RS_PARENT(path1), RS_PARENT(path2), flags);
-    else
-        return clonefile(resolve_symlink(path1), RS_PARENT(path2), flags);
-}
+SUBST(int, clonefile, (char const *path1, char const *path2, int flags))
+    clonefile( (flags & CLONE_NOFOLLOW) ? RS_PARENT(path1)
+                                        : resolve_symlink(path1)
+             , RS_PARENT(path2), flags);
+ENDSUBST
 
-int my_clonefileat(int fd1, char const *path1, int fd2, char const *path2, int flags)
-{
-    DEBUG("clonefileat(%s,%s) was called.", path1, path2);
-    if (flags & CLONE_NOFOLLOW)
-        return clonefileat(fd1, resolve_symlink_parent(path1, fd1), fd2, resolve_symlink_parent(path2, fd2), flags);
-    else
-        return clonefileat(fd1, resolve_symlink_at(fd1, path1), fd2, resolve_symlink_parent(path2, fd2), flags);
-}
+SUBST(int, clonefileat, 
+        (int fd1, char const *path1, int fd2, char const *path2, int flags))
+    clonefileat( fd1
+               , (flags & CLONE_NOFOLLOW) ? resolve_symlink_parent(path1, fd1)
+                                          : resolve_symlink_at(fd1, path1)
+                , fd2
+                , resolve_symlink_parent(path2, fd2)
+                , flags);
+        clonefileat(fd1, resolve_symlink_at(fd1, path1), fd2, resolve_symlink_parent(path2, fd2), flags);
+ENDSUBST
 
-int my_fclonefileat(int src, int fd, char const *path, int flags)
-{
-    DEBUG("fclonefileat(%s) was called.", path);
-    return fclonefileat(src, fd, resolve_symlink_parent(path, fd), flags);
-}
+SUBST(int, fclonefileat, (int src, int fd, char const *path, int flags))
+    fclonefileat(src, fd, resolve_symlink_parent(path, fd), flags);
+ENDSUBST
 
-int my_exchangedata(char const *path1, char const *path2, int options)
-{
-    DEBUG("exchangedata(%s,%s) was called.", path1, path2);
-    if (options & FSOPT_NOFOLLOW)
-        return exchangedata(RS_PARENT(path1), RS_PARENT(path2), options);
-    else
-        return exchangedata(resolve_symlink(path1), resolve_symlink(path2), options);
-}
+SUBST(int, exchangedata, (char const *path1, char const *path2, int options))
+    exchangedata((options & FSOPT_NOFOLLOW) ? RS_PARENT(path1)
+                                            : resolve_symlink(path1)
+                , RS_PARENT(path2)
+                , options);
+ENDSUBST
 
-int my_truncate(char const *path, off_t length)
-{
-    DEBUG("truncate(%s) was called.", path);
-    return truncate(resolve_symlink(path), length);
-}
+SUBST(int, truncate, (char const *path, off_t length))
+    truncate(resolve_symlink(path), length);
+ENDSUBST
 
-int my_utimes(char const *path, struct timeval times[2])
-{
-    DEBUG("utimes(%s) was called.", path);
-    return utimes(resolve_symlink(path), times);
-}
+SUBST(int, utimes, (char const *path, struct timeval times[2]))
+    utimes(resolve_symlink(path), times);
+ENDSUBST
 
-int my_rename(char const *from, char const *to)
-{
-    DEBUG("rename(%s,%s) was called.", from, to);
+SUBST(int, rename, (char const *from, char const *to))
     char newp1[PATH_MAX];
     strlcpy(newp1, RS_PARENT(from), PATH_MAX);
-    return rename(newp1, RS_PARENT(to));
-}
+    rename(newp1, RS_PARENT(to));
+ENDSUBST
 
-int my_renameat(int fd1, char const *from, int fd2, char const *to)
-{
-    DEBUG("renameat(%s,%s) was called.", from, to);
+SUBST(int, my_renameat, (int fd1, char const *from, int fd2, char const *to))
     char newp1[PATH_MAX];
     strlcpy(newp1, resolve_symlink_parent(from, fd1), PATH_MAX);
-    return renameat(fd1, newp1, fd2, resolve_symlink_parent(to, fd2));
-}
+    renameat(fd1, newp1, fd2, resolve_symlink_parent(to, fd2));
+ENDSUBST
 
-int my_renamex_np(char const *from, char const *to, int flags)
-{
-    DEBUG("renamex_np(%s,%s) was called.", from, to);
+SUBST(int, renamex_np, (char const *from, char const *to, int flags))
     char newp1[PATH_MAX];
     strlcpy(newp1, RS_PARENT(from), PATH_MAX);
-    return renamex_np(newp1, RS_PARENT(to), flags);
-}
+    renamex_np(newp1, RS_PARENT(to), flags);
+ENDSUBST
 
-int my_renameatx_np(int fd1, char const *from, int fd2, char const *to, int flags)
-{
-    DEBUG("renameatx_np(%s,%s) was called.", from, to);
+SUBST(int, renameatx_np,
+        (int fd1, char const *from, int fd2, char const *to, int flags))
     char newp1[PATH_MAX];
     strlcpy(newp1, resolve_symlink_parent(from, fd1), PATH_MAX);
-    return renameatx_np(fd1, newp1, fd2, resolve_symlink_parent(to, fd2), flags);
-}
+    renameatx_np(fd1, newp1, fd2, resolve_symlink_parent(to, fd2), flags);
+ENDSUBST
 
-int my_undelete(char const *path)
-{
-    DEBUG("undelete(%s) was called.", path);
-    return undelete(resolve_symlink(path));
-}
+SUBST(int, undelete, (char const *path))
+    undelete(resolve_symlink(path));
+ENDSUBST
 
-int my_mkdir(char const *path, mode_t mode)
-{
-    DEBUG("mkdir(%s) was called.", path);
-    return mkdir(RS_PARENT(path), mode);
-}
+SUBST(int, mkdir, (char const *path, mode_t mode))
+    mkdir(RS_PARENT(path), mode);
+ENDSUBST
 
-int my_mkdirat(int fd, char const *path, mode_t mode)
-{
-    DEBUG("mkdirat(%s) was called.", path);
-    return mkdirat(fd, resolve_symlink_parent(path, fd), mode);
-}
+SUBST(int, mkdirat, (int fd, char const *path, mode_t mode))
+    mkdirat(fd, resolve_symlink_parent(path, fd), mode);
+ENDSUBST
 
-int my_rmdir(char const *path)
-{
-    DEBUG("rmdir(%s) was called.", path);
-    return rmdir(RS_PARENT(path));
-}
+SUBST(int, rmdir, (char const *path))
+    rmdir(RS_PARENT(path));
+ENDSUBST
 
-int my_chdir(char const *path)
-{
-    DEBUG("chdir(%s) was called.", path);
-    return chdir(resolve_symlink(path));
-}
+SUBST(int, chdir, (char const *path))
+    chdir(resolve_symlink(path));
+ENDSUBST
 
-int my_statfs(char const *path, struct statfs *buf)
-{
-    DEBUG("statfs(%s) was called.", path);
-    return statfs(resolve_symlink(path), buf);
-}
+SUBST(int, statfs, (char const *path, struct statfs *buf))
+    statfs(resolve_symlink(path), buf);
+ENDSUBST
 
-ssize_t my_listxattr(char const *path, char *buf, size_t size, int options)
-{
-    DEBUG("listxattr(%s) was called.", path);
-    return listxattr(RS_PARENT(path), buf, size, options);
-}
+SUBST(ssize_t, listxattr, 
+        (char const *path, char *buf, size_t size, int options))
+    listxattr(RS_PARENT(path), buf, size, options);
+ENDSUBST
 
-int my_removexattr(char const *path, char const *name, int options)
-{
-    DEBUG("removexattr(%s) was called.", path);
-    return removexattr(RS_PARENT(path), name, options);
-}
+SUBST(int, removexattr, 
+        (char const *path, char const *name, int options))
+    removexattr(RS_PARENT(path), name, options);
+ENDSUBST
 
-int my_setxattr(char const *path, char const *name, void *value, size_t size, u_int32_t position, int options)
-{
-    DEBUG("setxattr(%s) was called.", path);
-    return setxattr(RS_PARENT(path), name, value, size, position, options);
-}
+SUBST(int, setxattr, 
+        (char const *path, char const *name, void *value, size_t size, u_int32_t position, int options))
+    setxattr(RS_PARENT(path), name, value, size, position, options);
+ENDSUBST
 
-int my_pathconf(char const *path, int name)
-{
-    DEBUG("pathconf(%s) was called.", path);
-    return pathconf(RS_PARENT(path), name);
-}
+SUBST(int, pathconf, (char const *path, int name))
+    pathconf(RS_PARENT(path), name);
+ENDSUBST
 
-int my_setattrlist(char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options)
-{
-    DEBUG("setattrlist(%s) was called.", path);
-    return setattrlist(RS_PARENT(path), attrList, attrBuf, attrBufSize, options);
-}
+SUBST(int, setattrlist, 
+        (char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options))
+    setattrlist(RS_PARENT(path), attrList, attrBuf, attrBufSize, options);
+ENDSUBST
 
-int my_getattrlist(char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options)
-{
-    DEBUG("getattrlist(%s) was called.", path);
-    return getattrlist(RS_PARENT(path), attrList, attrBuf, attrBufSize, options);
-}
+SUBST(int, getattrlist, 
+        (char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options))
+    getattrlist(RS_PARENT(path), attrList, attrBuf, attrBufSize, options);
+ENDSUBST
 
-int my_getattrlistat(int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options)
-{
-    DEBUG("getattrlistat(%s) was called.", path);
-    return getattrlistat(fd, resolve_symlink_parent(path, fd), attrList, attrBuf, attrBufSize, options);
-}
+SUBST(int, getattrlistat, 
+        (int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options))
+    getattrlistat(fd, resolve_symlink_parent(path, fd), attrList, attrBuf, attrBufSize, options);
+ENDSUBST
 
 char const *my_getcwd(char *buf, size_t size)
 {
@@ -361,10 +300,8 @@ char const *my_getcwd(char *buf, size_t size)
     return buf;
 }
 
-DIR *my_opendir(char const *path)
-{
-    DEBUG("opendir(%s) was called.", path);
-    return opendir(resolve_symlink(path));
-}
+SUBST(DIR *, opendir, (char const *path))
+    opendir(resolve_symlink(path));
+ENDSUBST
 
 // vim: ft=c.doxygen
