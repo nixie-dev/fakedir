@@ -28,16 +28,16 @@ void macho_add_dependencies(char const *path, void (*e)(char const *));
         return _r;                                   \
     }
 
-#define RS_PARENT(p) resolve_symlink_parent(p, -1)
+#define RS_PARENT(p) resolve_symlink_parent(-1, p)
 
 static char const *rs_at_flagged(int fd, char const *path, int flags)
 {
     if (flags & AT_FDCWD && flags & AT_SYMLINK_NOFOLLOW)
-        return resolve_symlink_parent(path, -1);
+        return resolve_symlink_parent(-1, path);
     else if (flags & AT_FDCWD)
         return resolve_symlink(path);
     else if (flags & AT_SYMLINK_NOFOLLOW)
-        return resolve_symlink_parent(path, fd);
+        return resolve_symlink_parent(fd, path);
     else
         return resolve_symlink_at(fd, path);
 }
@@ -146,8 +146,8 @@ ENDSUBST
 SUBST(int, linkat, 
         (int fd1, char const *path1, int fd2, char const *path2, int flag))
     const char *newp1 = (flag & AT_SYMLINK_FOLLOW) ? resolve_symlink_at(fd1, path1)
-                                                   : resolve_symlink_parent(path1, fd1);
-    linkat(fd1, newp1, fd2, resolve_symlink_parent(path2, fd2), flag);
+                                                   : resolve_symlink_parent(fd1, path1);
+    linkat(fd1, newp1, fd2, resolve_symlink_parent(fd2, path2), flag);
 ENDSUBST
 
 SUBST(int, unlink, (char const *path))
@@ -155,7 +155,7 @@ SUBST(int, unlink, (char const *path))
 ENDSUBST
 
 SUBST(int, unlinkat, (int fd, char const *path, int flag))
-    unlinkat(fd, resolve_symlink_parent(path, fd), flag);
+    unlinkat(fd, resolve_symlink_parent(fd, path), flag);
 ENDSUBST
 
 SUBST(int, symlink, (char const *what, char const *path))
@@ -195,16 +195,15 @@ ENDSUBST
 SUBST(int, clonefileat, 
         (int fd1, char const *path1, int fd2, char const *path2, int flags))
     clonefileat( fd1
-               , (flags & CLONE_NOFOLLOW) ? resolve_symlink_parent(path1, fd1)
+               , (flags & CLONE_NOFOLLOW) ? resolve_symlink_parent(fd1, path1)
                                           : resolve_symlink_at(fd1, path1)
                 , fd2
-                , resolve_symlink_parent(path2, fd2)
+                , resolve_symlink_parent(fd2, path2)
                 , flags);
-        clonefileat(fd1, resolve_symlink_at(fd1, path1), fd2, resolve_symlink_parent(path2, fd2), flags);
 ENDSUBST
 
 SUBST(int, fclonefileat, (int src, int fd, char const *path, int flags))
-    fclonefileat(src, fd, resolve_symlink_parent(path, fd), flags);
+    fclonefileat(src, fd, resolve_symlink_parent(fd, path), flags);
 ENDSUBST
 
 SUBST(int, exchangedata, (char const *path1, char const *path2, int options))
@@ -230,8 +229,8 @@ ENDSUBST
 
 SUBST(int, renameat, (int fd1, char const *from, int fd2, char const *to))
     char newp1[PATH_MAX];
-    strlcpy(newp1, resolve_symlink_parent(from, fd1), PATH_MAX);
-    renameat(fd1, newp1, fd2, resolve_symlink_parent(to, fd2));
+    strlcpy(newp1, resolve_symlink_parent(fd1, from), PATH_MAX);
+    renameat(fd1, newp1, fd2, resolve_symlink_parent(fd2, to));
 ENDSUBST
 
 SUBST(int, renamex_np, (char const *from, char const *to, int flags))
@@ -243,8 +242,8 @@ ENDSUBST
 SUBST(int, renameatx_np,
         (int fd1, char const *from, int fd2, char const *to, int flags))
     char newp1[PATH_MAX];
-    strlcpy(newp1, resolve_symlink_parent(from, fd1), PATH_MAX);
-    renameatx_np(fd1, newp1, fd2, resolve_symlink_parent(to, fd2), flags);
+    strlcpy(newp1, resolve_symlink_parent(fd1, from), PATH_MAX);
+    renameatx_np(fd1, newp1, fd2, resolve_symlink_parent(fd2, to), flags);
 ENDSUBST
 
 SUBST(int, undelete, (char const *path))
@@ -256,7 +255,7 @@ SUBST(int, mkdir, (char const *path, mode_t mode))
 ENDSUBST
 
 SUBST(int, mkdirat, (int fd, char const *path, mode_t mode))
-    mkdirat(fd, resolve_symlink_parent(path, fd), mode);
+    mkdirat(fd, resolve_symlink_parent(fd, path), mode);
 ENDSUBST
 
 SUBST(int, rmdir, (char const *path))
@@ -302,7 +301,7 @@ ENDSUBST
 
 SUBST(int, getattrlistat, 
         (int fd, char const *path, struct attrlist *attrList, void *attrBuf, size_t attrBufSize, unsigned long options))
-    getattrlistat(fd, resolve_symlink_parent(path, fd), attrList, attrBuf, attrBufSize, options);
+    getattrlistat(fd, resolve_symlink_parent(fd, path), attrList, attrBuf, attrBufSize, options);
 ENDSUBST
 
 SUBST(char const *, getcwd, (char *buf, size_t size))

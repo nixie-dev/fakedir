@@ -123,7 +123,7 @@ char const *rewrite_path_rev(char const *path)
     }
 }
 
-char const *resolve_symlink_parent(char const *path, int fd)
+char const *resolve_symlink_parent(int fd, char const *path)
 {
     char workpath[PATH_MAX];
     char *fname = NULL;
@@ -141,10 +141,7 @@ char const *resolve_symlink_parent(char const *path, int fd)
         return linkbuf;
     }
 
-    if (fd != -1)
-        resolve_symlink_at(fd, workpath);
-    else
-        resolve_symlink(workpath);
+    resolve_symlink_at(fd, workpath);
     strlcat(linkbuf, "/", PATH_MAX);
     strlcat(linkbuf, fname, PATH_MAX);
     return rewrite_path(linkbuf);
@@ -167,7 +164,7 @@ char const *resolve_symlink_at(int fd, char const *path)
 
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path
-        char const *result = resolve_symlink_parent(path, fd);
+        char const *result = resolve_symlink_parent(fd, path);
         return result;
     }
     linkbuf[linklen] = 0;
@@ -206,7 +203,6 @@ int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_
     }
 
     return pspawn_patch_envp(pid, resolve_symlink(path), facts, attrp, argv, envp);
-
 }
 
 

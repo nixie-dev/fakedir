@@ -115,13 +115,13 @@ char const *rewrite_path_rev(char const *path);
  * so that the last symbolic link is preserved.
  *
  * @brief   Resolve symbolic links in path down to parent directory.
- * @param path  The path to perform resolution on
  * @param fd    The file descriptor to pass back to @ref resolve_symlink_at,
  *              or -1 to use @ref resolve_symlink.
+ * @param path  The path to perform resolution on
  * @return  A string representing the resolved path.
  * @see Mutually recursive with @ref resolve_symlink and @ref resolve_symlink_at
  */
-char const *resolve_symlink_parent(char const *path, int fd);
+char const *resolve_symlink_parent(int fd, char const *path);
 
 /**
  * This function performs a recursive resolution of all symbolic links
