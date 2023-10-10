@@ -69,7 +69,7 @@ int my_open(char const *name, int flags, int mode)
         n = RS_PARENT(name);
     else
         n = resolve_symlink(name);
-    open(n, flags, mode);
+    return open(n, flags, mode);
 }
 
 SUBST(void *, dlopen, (char const *path, int mode))
