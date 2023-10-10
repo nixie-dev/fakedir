@@ -63,6 +63,16 @@ void *my_dlopen(char const *path, int mode)
     }
 }
 
+int my_open(char const *name, int flags, int mode)
+{
+    char *n;
+    if (flags & (O_SYMLINK|O_NOFOLLOW))
+        n = RS_PARENT(name);
+    else
+        n = resolve_symlink(name);
+    open(n, flags, mode);
+}
+
 SUBST(void *, dlopen, (char const *path, int mode))
     my_dlopen(path, mode);
 ENDSUBST
@@ -83,7 +93,7 @@ SUBST(int, fstatat, (int fd, char const *path, struct stat *buf, int flag))
     fstatat(fd, rs_at_flagged(fd, path, flag), buf, flag);
 ENDSUBST
 
-SUBST(int, my_access, (char const *path, int mode))
+SUBST(int, access, (char const *path, int mode))
     access(resolve_symlink(path), mode);
 ENDSUBST
 
@@ -165,12 +175,7 @@ SUBST(FILE *, freopen, (char const *path, char const *mode, FILE *orig))
 ENDSUBST
 
 SUBST(int, open, (char const *name, int flags, int mode))
-    char *n;
-    if (flags & (O_SYMLINK|O_NOFOLLOW))
-        n = RS_PARENT(name);
-    else
-        n = resolve_symlink(name);
-    open(n, flags, mode);
+    my_open(name, flags, mode);
 ENDSUBST
 
 SUBST(int, clonefile, (char const *path1, char const *path2, int flags))

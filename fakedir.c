@@ -17,6 +17,8 @@
  * strictly forbidden. All code below must use memory allocated on the stack.
  */
 
+// Pulled from trivial_replacements. It's useful.
+int my_open(char const *name, int flags, int mode);
 
 bool isdebug = false;
 
@@ -193,7 +195,7 @@ int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_
     // Since we're overriding shebang behavior, we might allow non-executables
     // to be run with a shebang. To prevent that, we skip the shebang parser
     // in files without exec rights and let the real execve() return the error.
-    int canexec = ! my_access(path, X_OK);
+    int canexec = ! access(resolve_symlink(path), X_OK);
     read(tgt, shebang, PATH_MAX);
     close(tgt);
 
