@@ -209,10 +209,5 @@ int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_
 
 }
 
-int my_execve(char const *path, char *argv[], char *envp[])
-{
-    DEBUG("execve(%s) was called.", path);
-    return my_posix_spawn(PSP_EXEC, path, NULL, NULL, argv, envp);
-}
 
 // vim: ft=c.doxygen

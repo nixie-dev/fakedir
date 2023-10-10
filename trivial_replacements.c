@@ -10,6 +10,7 @@
  * pattern, so they have been grouped here for easier reading.
  */
 
+int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[]);
 void macho_add_dependencies(char const *path, void (*e)(char const *));
 
 #define SUBST(T, n, p)  \
@@ -71,6 +72,14 @@ int my_open(char const *name, int flags, int mode)
         n = resolve_symlink(name);
     return open(n, flags, mode);
 }
+
+SUBST(int, execve, (char const *path, char *argv[], char *envp[]))
+    my_posix_spawn(PSP_EXEC, path, NULL, NULL, argv, envp);
+ENDSUBST
+
+SUBST(int, posix_spawn, (pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *argv[], char *envp[]))
+    my_posix_spawn(pid, path, facts, attrp, argv, envp);
+ENDSUBST
 
 SUBST(void *, dlopen, (char const *path, int mode))
     my_dlopen(path, mode);
