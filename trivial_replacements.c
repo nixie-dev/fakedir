@@ -13,20 +13,19 @@
 void macho_add_dependencies(char const *path, void (*e)(char const *));
 
 #define SUBST(T, n, p)  \
+    T _my_##n p;                                         \
     __attribute__((used, section("__DATA,__interpose"))) \
-        extern T n p;                                    \
-        T _my_##n p;                                     \
-        static void *_##n = { _my_##n , n };             \
-        T _my_##n p {                                    \
-            sem_wait(_lock);                             \
-            DEBUG("Now serving %s", #n );                \
-            T _r = ({
+        static void *_##n[] = { _my_##n , n };           \
+    T _my_##n p {                                        \
+        sem_wait(_lock);                                 \
+        DEBUG("Now serving %s", #n );                    \
+        T _r = ({
 
 #define ENDSUBST \
-            });                                          \
-            sem_post(_lock);                             \
-            return _r;                                   \
-        }
+        });                                          \
+        sem_post(_lock);                             \
+        return _r;                                   \
+    }
 
 #define RS_PARENT(p) resolve_symlink_parent(p, -1)
 
