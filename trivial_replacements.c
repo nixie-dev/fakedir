@@ -219,7 +219,7 @@ SUBST(int, rename, (char const *from, char const *to))
     rename(newp1, RS_PARENT(to));
 ENDSUBST
 
-SUBST(int, my_renameat, (int fd1, char const *from, int fd2, char const *to))
+SUBST(int, renameat, (int fd1, char const *from, int fd2, char const *to))
     char newp1[PATH_MAX];
     strlcpy(newp1, resolve_symlink_parent(from, fd1), PATH_MAX);
     renameat(fd1, newp1, fd2, resolve_symlink_parent(to, fd2));
@@ -296,13 +296,11 @@ SUBST(int, getattrlistat,
     getattrlistat(fd, resolve_symlink_parent(path, fd), attrList, attrBuf, attrBufSize, options);
 ENDSUBST
 
-char const *my_getcwd(char *buf, size_t size)
-{
+SUBST(char const *, getcwd, (char *buf, size_t size))
     getcwd(buf, size);
     strlcpy(buf, rewrite_path_rev(buf), size);
-    DEBUG("getcwd() -> '%s' was called.", buf);
-    return buf;
-}
+    buf;
+ENDSUBST
 
 SUBST(DIR *, opendir, (char const *path))
     opendir(resolve_symlink(path));
