@@ -141,7 +141,7 @@ char const *resolve_symlink_parent(char const *path, int fd)
         return linkbuf;
     }
 
-    if (fd >= 0)
+    if (fd != -1)
         resolve_symlink_at(fd, workpath);
     else
         resolve_symlink(workpath);
@@ -156,7 +156,7 @@ char const *resolve_symlink_at(int fd, char const *path)
     strlcpy(wpath, path, PATH_MAX);
 
     ssize_t linklen;
-    if (fd >= 0)
+    if (fd != -1)
         linklen = readlinkat(fd, rewrite_path(path), linkbuf, PATH_MAX);
     else
         linklen = readlink(rewrite_path(path), linkbuf, PATH_MAX);
