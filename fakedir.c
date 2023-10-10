@@ -20,6 +20,8 @@
 // Pulled from trivial_replacements. It's useful.
 int my_open(char const *name, int flags, int mode);
 
+bool _loaded = false;
+
 bool isdebug = false;
 
 const char *ownpath;
@@ -36,6 +38,9 @@ const char *target;
 __attribute__((constructor))
 static void __fakedir_init(void)
 {
+    if (_loaded)
+        return;
+
     isdebug = getenv("FAKEDIR_DEBUG");
     pattern = getenv("FAKEDIR_PATTERN");
     target = getenv("FAKEDIR_TARGET");
@@ -72,6 +77,7 @@ static void __fakedir_init(void)
 
     sem_init(_lock, false, 1);
     DEBUG("Initialized libfakedir with subtitution '%s' => '%s'", pattern, target);
+    _loaded = true;
 }
 
 __attribute__((destructor))
