@@ -52,9 +52,9 @@ static void __fakedir_init(void)
 
 #   ifdef STRIP_DEBUG
     if (isdebug)
-        dprintf(2, "WARNING: This build was configured without debug messages.\n");
+        dprintf(2, "[fakedir] WARNING: This build was configured without debug messages.\n");
 #   elif defined(ALWAYS_DEBUG)
-    dprintf(2, "WARNING: This build was configured with mandatory debug messages.\n");
+    dprintf(2, "[fakedir] WARNING: This build was configured with mandatory debug messages.\n");
     isdebug = true;
 #   endif
 
@@ -77,6 +77,7 @@ static void __fakedir_init(void)
 __attribute__((destructor))
 static void __fakedir_fini(void)
 {
+    DEBUG("Closing shop and deleting semaphore.");
     sem_destroy(_lock);
 }
 

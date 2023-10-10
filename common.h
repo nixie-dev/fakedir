@@ -72,7 +72,7 @@ extern const char *target;
  * @param args  Additional arguments for @ref printf
  */
 # define DEBUG(p, args...) \
-    if (isdebug) dprintf(2, p "\n", ## args)
+    if (isdebug) dprintf(2, "[fakedir] " p "\n", ## args)
 
 #else
 # define DEBUG(p, args...) ;
