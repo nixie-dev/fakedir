@@ -1,9 +1,9 @@
 #include "common.h"
-#include "trivial_replacements.h"
 
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 
+extern int my_open(char *name, int flags, int mode);
 extern int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *av[], char *ep[]);
 
 #   define dil_match "DYLD_INSERT_LIBRARIES="
