@@ -30,7 +30,7 @@ static char pathbuf[PATH_MAX];
 static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
 static char dedupbuf[PATH_MAX];
-sem_t *_lock;
+pthread_mutex_t _lock;
 
 const char *pattern;
 const char *target;
@@ -75,7 +75,7 @@ static void __fakedir_init(void)
     strlcpy(pathbuf, target, PATH_MAX);
     strlcpy(rpathbuf, pattern, PATH_MAX);
 
-    sem_init(_lock, false, 1);
+    pthread_mutex_init(&_lock, NULL);
     DEBUG("Initialized libfakedir with subtitution '%s' => '%s'", pattern, target);
     _loaded = true;
 }
@@ -83,8 +83,8 @@ static void __fakedir_init(void)
 __attribute__((destructor))
 static void __fakedir_fini(void)
 {
-    DEBUG("Closing shop and deleting semaphore.");
-    sem_destroy(_lock);
+    DEBUG("Closing shop and deleting mutex.");
+    pthread_mutex_destroy(&_lock);
 }
 
 bool startswith(char const *pattern, char const *msg)
@@ -163,10 +163,6 @@ char const *resolve_symlink_at(int fd, char const *path)
         linklen = readlinkat(fd, rewrite_path(path), linkbuf, PATH_MAX);
     else
         linklen = readlink(rewrite_path(path), linkbuf, PATH_MAX);
-        //        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ look familiar?
-        //          well, nope. This, unlike my_readlink, is an atom.
-        //          If you were to use my_readlink here instead, don't.
-        //          The resulting recursion model would fry my brain.
 
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path

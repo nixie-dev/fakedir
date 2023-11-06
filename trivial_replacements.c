@@ -18,13 +18,13 @@ void macho_add_dependencies(char const *path, void (*e)(char const *));
     __attribute__((used, section("__DATA,__interpose"))) \
         static void *_##n[] = { _my_##n , n };           \
     T _my_##n p {                                        \
-        sem_wait(_lock);                                 \
+        pthread_mutex_lock(&_lock);                      \
         DEBUG("Now serving %s", #n );                    \
         T _r = ({
 
 #define ENDSUBST \
         });                                          \
-        sem_post(_lock);                             \
+        pthread_mutex_unlock(&_lock);                \
         return _r;                                   \
     }
 
