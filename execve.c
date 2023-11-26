@@ -113,6 +113,7 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
     new_envp[fta_idx == -1 ? envc++ : fta_idx] = fta_full;
     new_envp[envc] = 0;
 
+    pthread_mutex_unlock(&_lock);
     if (pid == PSP_EXEC)
         return execve(wpath, argv, new_envp);
     else
