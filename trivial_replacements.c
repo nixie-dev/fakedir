@@ -55,7 +55,9 @@ void *my_dlopen(char const *path, int mode)
     DEBUG("dlopen(%s) was called.", path);
     if (path) {
         char realp[PATH_MAX];
+        pthread_mutex_lock(&_lock);
         strlcpy(realp, resolve_symlink(path), PATH_MAX);
+        pthread_mutex_unlock(&_lock);
         macho_add_dependencies(realp, _my_dlopen_inner);
         return dlopen(realp, mode);
     } else {
@@ -82,6 +84,7 @@ SUBST(int, posix_spawn, (pid_t *pid, char const *path, const posix_spawn_file_ac
 ENDSUBST
 
 SUBST(void *, dlopen, (char const *path, int mode))
+    pthread_mutex_unlock(&_lock);
     my_dlopen(path, mode);
 ENDSUBST
 
