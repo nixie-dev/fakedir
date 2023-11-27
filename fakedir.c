@@ -60,7 +60,9 @@ static void __fakedir_init(void)
     }
 
 #   if !defined(STRIP_DEBUG) && defined(DEBUG_FILE)
-    debugfd = open(DEBUG_FILE, O_CREAT|O_RDWR, 0644);
+    char tgt[PATH_MAX];
+    sprintf(tgt, "%s.%d", DEBUG_FILE, getpid());
+    debugfd = open(tgt, O_CREAT|O_RDWR, 0644);
 #   endif
 
 #   ifdef STRIP_DEBUG
