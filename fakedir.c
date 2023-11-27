@@ -26,6 +26,10 @@ bool isdebug = false;
 
 const char *ownpath;
 
+#ifndef STRIP_DEBUG
+int debugfd = 2;
+#endif
+
 static char pathbuf[PATH_MAX];
 static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
@@ -54,6 +58,10 @@ static void __fakedir_init(void)
         dprintf(2, "Variable FAKEDIR_PATTERN may not be a subset of FAKEDIR_TARGET.\n");
         exit(1);
     }
+
+#   if !defined(STRIP_DEBUG) && defined(DEBUG_FILE)
+    debugfd = open(DEBUG_FILE, O_CREAT|O_RDWR, 0644);
+#   endif
 
 #   ifdef STRIP_DEBUG
     if (isdebug)
@@ -84,6 +92,9 @@ __attribute__((destructor))
 static void __fakedir_fini(void)
 {
     DEBUG("Closing shop and deleting mutex.");
+#   if !defined STRIP_DEBUG && defined(DEBUG_FILE)
+    close(debugfd);
+#   endif
     pthread_mutex_destroy(&_lock);
 }
 

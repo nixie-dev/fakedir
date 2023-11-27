@@ -67,12 +67,18 @@ extern const char *target;
 
 #ifndef STRIP_DEBUG
 /**
+ * @brief   File descriptor to output debug messages to. Useful when stderr
+ *          isn't guaranteed.
+ */
+extern int debugfd;
+
+/**
  * @brief   Prints to stderr if FAKEDIR_DEBUG is set.
  * @param p     Format string for @ref printf
  * @param args  Additional arguments for @ref printf
  */
 # define DEBUG(p, args...) \
-    if (isdebug) dprintf(2, "[fakedir] " p "\n", ## args)
+    if (isdebug) dprintf(debugfd, "[fakedir] " p "\n", ## args)
 
 #else
 # define DEBUG(p, args...) ;
