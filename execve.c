@@ -28,6 +28,7 @@ void macho_add_dependencies(char const *path, void (*step)(char const *d))
     read(fd, &hdr, sizeof hdr);
     if (hdr.magic != MH_MAGIC_64) {
         DEBUG("Not a Mach-O executable: %s", path);
+        close(fd);
         return;
     }
 
