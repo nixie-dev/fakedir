@@ -1,5 +1,4 @@
 #include "common.h"
-#include "trivial_replacements.h"
 #include "execve.h"
 
 
@@ -18,15 +17,24 @@
  * strictly forbidden. All code below must use memory allocated on the stack.
  */
 
+// Pulled from trivial_replacements. It's useful.
+int my_open(char const *name, int flags, int mode);
+
+bool _loaded = false;
 
 bool isdebug = false;
 
 const char *ownpath;
 
+#ifndef STRIP_DEBUG
+int debugfd = 2;
+#endif
+
 static char pathbuf[PATH_MAX];
 static char rpathbuf[PATH_MAX];
 static char linkbuf[PATH_MAX];
 static char dedupbuf[PATH_MAX];
+pthread_mutex_t _lock;
 
 const char *pattern;
 const char *target;
@@ -34,6 +42,9 @@ const char *target;
 __attribute__((constructor))
 static void __fakedir_init(void)
 {
+    if (_loaded)
+        return;
+
     isdebug = getenv("FAKEDIR_DEBUG");
     pattern = getenv("FAKEDIR_PATTERN");
     target = getenv("FAKEDIR_TARGET");
@@ -48,11 +59,17 @@ static void __fakedir_init(void)
         exit(1);
     }
 
+#   if !defined(STRIP_DEBUG) && defined(DEBUG_FILE)
+    char tgt[PATH_MAX];
+    sprintf(tgt, "%s.%d", DEBUG_FILE, getpid());
+    debugfd = open(tgt, O_CREAT|O_RDWR, 0644);
+#   endif
+
 #   ifdef STRIP_DEBUG
     if (isdebug)
-        dprintf(2, "WARNING: This build was configured without debug messages.\n");
+        dprintf(2, "[fakedir] WARNING: This build was configured without debug messages.\n");
 #   elif defined(ALWAYS_DEBUG)
-    dprintf(2, "WARNING: This build was configured with mandatory debug messages.\n");
+    dprintf(2, "[fakedir] WARNING: This build was configured with mandatory debug messages.\n");
     isdebug = true;
 #   endif
 
@@ -67,7 +84,20 @@ static void __fakedir_init(void)
 
     strlcpy(pathbuf, target, PATH_MAX);
     strlcpy(rpathbuf, pattern, PATH_MAX);
+
+    pthread_mutex_init(&_lock, NULL);
     DEBUG("Initialized libfakedir with subtitution '%s' => '%s'", pattern, target);
+    _loaded = true;
+}
+
+__attribute__((destructor))
+static void __fakedir_fini(void)
+{
+    DEBUG("Closing shop and deleting mutex.");
+#   if !defined STRIP_DEBUG && defined(DEBUG_FILE)
+    close(debugfd);
+#   endif
+    pthread_mutex_destroy(&_lock);
 }
 
 bool startswith(char const *pattern, char const *msg)
@@ -112,7 +142,7 @@ char const *rewrite_path_rev(char const *path)
     }
 }
 
-char const *resolve_symlink_parent(char const *path, int fd)
+char const *resolve_symlink_parent(int fd, char const *path)
 {
     char workpath[PATH_MAX];
     char *fname = NULL;
@@ -130,10 +160,7 @@ char const *resolve_symlink_parent(char const *path, int fd)
         return linkbuf;
     }
 
-    if (fd >= 0)
-        resolve_symlink_at(fd, workpath);
-    else
-        resolve_symlink(workpath);
+    resolve_symlink_at(fd, workpath);
     strlcat(linkbuf, "/", PATH_MAX);
     strlcat(linkbuf, fname, PATH_MAX);
     return rewrite_path(linkbuf);
@@ -145,18 +172,14 @@ char const *resolve_symlink_at(int fd, char const *path)
     strlcpy(wpath, path, PATH_MAX);
 
     ssize_t linklen;
-    if (fd >= 0)
+    if (fd != -1)
         linklen = readlinkat(fd, rewrite_path(path), linkbuf, PATH_MAX);
     else
         linklen = readlink(rewrite_path(path), linkbuf, PATH_MAX);
-        //        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ look familiar?
-        //          well, nope. This, unlike my_readlink, is an atom.
-        //          If you were to use my_readlink here instead, don't.
-        //          The resulting recursion model would fry my brain.
 
     if (linklen < 0) {
         // Symlink resolution failed, recurse through path
-        char const *result = resolve_symlink_parent(path, fd);
+        char const *result = resolve_symlink_parent(fd, path);
         return result;
     }
     linkbuf[linklen] = 0;
@@ -185,7 +208,7 @@ int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_
     // Since we're overriding shebang behavior, we might allow non-executables
     // to be run with a shebang. To prevent that, we skip the shebang parser
     // in files without exec rights and let the real execve() return the error.
-    int canexec = ! my_access(path, X_OK);
+    int canexec = ! access(resolve_symlink(path), X_OK);
     read(tgt, shebang, PATH_MAX);
     close(tgt);
 
@@ -195,76 +218,7 @@ int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_
     }
 
     return pspawn_patch_envp(pid, resolve_symlink(path), facts, attrp, argv, envp);
-
 }
 
-int my_execve(char const *path, char *argv[], char *envp[])
-{
-    DEBUG("execve(%s) was called.", path);
-    return my_posix_spawn(PSP_EXEC, path, NULL, NULL, argv, envp);
-}
-
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-__attribute__((used, section("__DATA,__interpose")))
-static void *interpose[] =  { my_open       , open
-                            , my_openat     , openat
-                            , my_dlopen     , dlopen
-                            , my_fopen      , fopen
-                            , my_freopen    , freopen
-                            , my_execve     , execve
-                            , my_posix_spawn, posix_spawn
-                            , my_lstat      , lstat
-                            , my_stat       , stat
-#ifdef __x86_64__
-                            , my_lstat      , lstat64
-                            , my_stat       , stat64
-#endif
-                            , my_fstatat    , fstatat
-                            , my_access     , access
-                            , my_faccessat  , faccessat
-                            , my_opendir    , opendir
-                            , my_chflags    , chflags
-                            , my_mkfifo     , mkfifo
-                            , my_chmod      , chmod
-                            , my_fchmodat   , fchmodat
-                            , my_chown      , chown
-                            , my_lchown     , lchown
-                            , my_fchownat   , fchownat
-                            , my_link       , link
-                            , my_linkat     , linkat
-                            , my_unlink     , unlink
-                            , my_unlinkat   , unlinkat
-                            , my_symlink    , symlink
-                            , my_symlinkat  , symlinkat
-                            , my_readlink   , readlink
-                            , my_readlinkat , readlinkat
-                            , my_clonefile  , clonefile
-                            , my_clonefileat, clonefileat
-                            , my_fclonefileat, fclonefileat
-                            , my_exchangedata, exchangedata
-                            , my_truncate   , truncate
-                            , my_utimes     , utimes
-                            , my_rename     , rename
-                            , my_renameat   , renameat
-                            , my_renamex_np , renamex_np
-                            , my_renameatx_np, renameatx_np
-                            , my_undelete   , undelete
-                            , my_mkdir      , mkdir
-                            , my_mkdirat    , mkdirat
-                            , my_rmdir      , rmdir
-                            , my_chdir      , chdir
-                            , my_statfs     , statfs
-#ifdef __x86_64__
-                            , my_statfs     , statfs64
-#endif
-                            , my_listxattr  , listxattr
-                            , my_removexattr, removexattr
-                            , my_setxattr   , setxattr
-                            , my_pathconf   , pathconf
-                            , my_setattrlist, setattrlist
-                            , my_getattrlist, getattrlist
-                            , my_getattrlistat, getattrlistat
-                            , my_getcwd     , getcwd
-                            };
 
 // vim: ft=c.doxygen

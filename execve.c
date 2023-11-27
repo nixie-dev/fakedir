@@ -1,9 +1,9 @@
 #include "common.h"
-#include "trivial_replacements.h"
 
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 
+extern int my_open(char *name, int flags, int mode);
 extern int my_posix_spawn(pid_t *pid, char const *path, const posix_spawn_file_actions_t *facts, const posix_spawnattr_t *attrp, char *av[], char *ep[]);
 
 #   define dil_match "DYLD_INSERT_LIBRARIES="
@@ -28,6 +28,7 @@ void macho_add_dependencies(char const *path, void (*step)(char const *d))
     read(fd, &hdr, sizeof hdr);
     if (hdr.magic != MH_MAGIC_64) {
         DEBUG("Not a Mach-O executable: %s", path);
+        close(fd);
         return;
     }
 
@@ -113,6 +114,7 @@ int pspawn_patch_envp(pid_t *pid, char const *path, const posix_spawn_file_actio
     new_envp[fta_idx == -1 ? envc++ : fta_idx] = fta_full;
     new_envp[envc] = 0;
 
+    pthread_mutex_unlock(&_lock);
     if (pid == PSP_EXEC)
         return execve(wpath, argv, new_envp);
     else

@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <spawn.h>
 #include <dlfcn.h>
+#include <pthread.h>
 
 #include <mach-o/dyld.h>
 
@@ -36,6 +37,11 @@
  * @see DEBUG   Debug printing macro which uses this variable
  */
 extern bool isdebug;
+
+/**
+ * @brief   Strictly locks syscall rewrite operations.
+ */
+extern pthread_mutex_t _lock;
 
 /**
  * @brief   Dynamically loaded path to ourselves, for preservation across exec
@@ -61,12 +67,18 @@ extern const char *target;
 
 #ifndef STRIP_DEBUG
 /**
+ * @brief   File descriptor to output debug messages to. Useful when stderr
+ *          isn't guaranteed.
+ */
+extern int debugfd;
+
+/**
  * @brief   Prints to stderr if FAKEDIR_DEBUG is set.
  * @param p     Format string for @ref printf
  * @param args  Additional arguments for @ref printf
  */
 # define DEBUG(p, args...) \
-    if (isdebug) dprintf(2, p "\n", ## args)
+    if (isdebug) dprintf(debugfd, "[fakedir] " p "\n", ## args)
 
 #else
 # define DEBUG(p, args...) ;
@@ -109,13 +121,13 @@ char const *rewrite_path_rev(char const *path);
  * so that the last symbolic link is preserved.
  *
  * @brief   Resolve symbolic links in path down to parent directory.
- * @param path  The path to perform resolution on
  * @param fd    The file descriptor to pass back to @ref resolve_symlink_at,
  *              or -1 to use @ref resolve_symlink.
+ * @param path  The path to perform resolution on
  * @return  A string representing the resolved path.
  * @see Mutually recursive with @ref resolve_symlink and @ref resolve_symlink_at
  */
-char const *resolve_symlink_parent(char const *path, int fd);
+char const *resolve_symlink_parent(int fd, char const *path);
 
 /**
  * This function performs a recursive resolution of all symbolic links
