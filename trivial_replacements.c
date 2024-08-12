@@ -1,4 +1,5 @@
 #include "common.h"
+#include <string.h>
 
 /**
  * @file        trivial_replacements.c
@@ -309,10 +310,16 @@ ENDSUBST
 
 SUBST(char const *, getcwd, (char *buf, size_t size))
     pthread_mutex_unlock(&_lock);
-    getcwd(buf, size);
+    char const *cwd = getcwd(buf, size);
     pthread_mutex_lock(&_lock);
-    strlcpy(buf, rewrite_path_rev(buf), size);
-    buf;
+    char *nbuf;
+    if (buf == NULL) {
+        nbuf = strdup(cwd);
+    } else {
+        nbuf = buf;
+    }
+    strlcpy(nbuf, rewrite_path_rev(nbuf), size);
+    nbuf;
 ENDSUBST
 
 SUBST(DIR *, opendir, (char const *path))
