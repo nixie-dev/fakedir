@@ -63,7 +63,7 @@ extern const char *target;
  * @brief   Special constant to tell pspawn_patch_envp() to use execve()
  *          instead.
  */
-#define PSP_EXEC -15
+#define PSP_EXEC (pid_t *) -15
 
 #ifndef STRIP_DEBUG
 /**
